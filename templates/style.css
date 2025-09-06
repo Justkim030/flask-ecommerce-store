@@ -1,0 +1,230 @@
+/* Kilimall-inspired Theme */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap');
+
+:root {
+    --kilimall-orange: #f68b1e;
+    --kilimall-orange-dark: #e07b1b;
+    --text-dark: #333;
+    --background-light: #f4f4f4;
+}
+
+body {
+    background-color: var(--background-light);
+    font-family: 'Poppins', sans-serif;
+    color: var(--text-dark);
+}
+
+/* --- Navbar --- */
+/* Use navbar-light and bg-white in base.html */
+.navbar.bg-white {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.navbar-light .navbar-brand {
+    color: var(--kilimall-orange);
+    font-weight: 700;
+}
+.navbar-light .navbar-nav .nav-link {
+    color: var(--text-dark);
+    font-weight: 500;
+}
+.navbar-light .navbar-nav .nav-link:hover {
+    color: var(--kilimall-orange);
+}
+.navbar-light .navbar-text {
+    color: var(--text-dark);
+}
+
+/* --- Home Page Hero Banner --- */
+.hero-banner {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffebb7 100%); /* Subtle gradient */
+    color: var(--text-dark);
+    border-radius: 8px;
+    padding: 2rem !important;
+    border: 1px solid #ffeecb;
+}
+
+/* --- Featured Products Carousel --- */
+#featuredCarousel .carousel-item {
+    height: 400px; /* Set a consistent height for the carousel */
+    background-color: #e9ecef; /* Add a background for images that don't cover */
+}
+
+#featuredCarousel .carousel-item img {
+    height: 100%;
+    object-fit: cover; /* Ensures the image covers the area, may crop */
+    width: 100%;
+}
+
+/* --- Sidebar Categories --- */
+.list-group-item {
+    border: none;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+.list-group-item:hover, .list-group-item.active {
+    background-color: var(--kilimall-orange);
+    color: white;
+    transform: translateX(5px);
+    border-radius: 5px;
+}
+
+/* --- Product Cards --- */
+.card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Softer default shadow */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+.card-img-top {
+    height: 250px; /* Increased from 200px for more image space */
+    object-fit: cover;
+    width: 100%;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+.card-title {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    /* To prevent long titles from breaking layout */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 32px; /* Approx 2 lines of text */
+}
+.card-text {
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.product-description-list {
+    font-size: 0.8rem;
+    color: #6c757d;
+    padding-left: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.price-wrapper {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.price {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 0;
+}
+
+.old-price {
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-decoration: line-through;
+    margin-bottom: 0;
+}
+
+.discount-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--kilimall-orange);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.rating-wrapper {
+    color: #ffc107; /* Bootstrap's warning yellow for stars */
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.rating-wrapper .rating-text {
+    color: #6c757d;
+    margin-left: 0.25rem;
+}
+
+/* --- Form Cards (Login/Register) --- */
+.card-header {
+    background-color: var(--kilimall-orange);
+    color: white;
+    font-weight: 700;
+}
+
+/* --- Buttons --- */
+.btn-primary, .btn-success {
+    background-color: var(--kilimall-orange);
+    border-color: var(--kilimall-orange);
+    font-weight: 500;
+    color: white;
+    transition: background-color 0.3s ease;
+}
+.btn-primary:hover, .btn-success:hover {
+    background-color: var(--kilimall-orange-dark);
+    border-color: var(--kilimall-orange-dark);
+    color: white;
+}
+
+/* --- Alerts (Standard UX Colors) --- */
+.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+.alert-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+}
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+/* --- Info/Footer Section --- */
+.info-section-wrapper {
+    background-color: #ffffff;
+    color: #6c757d;
+}
+
+.info-section-wrapper h5 {
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    font-size: 1rem;
+}
+
+.info-section-wrapper ul li a {
+    text-decoration: none;
+    color: #6c757d;
+    font-size: 0.9rem;
+    line-height: 1.8;
+    transition: color 0.3s ease;
+}
+
+.info-section-wrapper ul li a:hover {
+    color: var(--kilimall-orange);
+}
+
+.info-section-wrapper p {
+    font-size: 0.9rem;
+    color: #6c757d;
+    line-height: 1.6;
+}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout - Tech Accessories Kenya{% endblock %}
+
+{% block content %}
+<h2>Checkout</h2>
+<form method="POST" action="{{ url_for('checkout') }}">
+    <div class="mb-3">
+        <label for="phone_number" class="form-label">M-PESA Phone Number</label>
+        <input type="text" class="form-control" id="phone_number" name="phone_number" placeholder="e.g., +254712345678" required>
+    </div>
+    <button type="submit" class="btn btn-success">Pay with M-PESA</button>
+</form>
+{% endblock %}

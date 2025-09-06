@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Shopping Cart - Tech Accessories Kenya{% endblock %}
+
+{% block content %}
+<h2>Your Shopping Cart</h2>
+{% if cart_items %}
+<table class="table">
+    <thead class="table-light">
+        <tr class="text-center">
+            <th scope="col" class="text-start">Product</th>
+            <th scope="col">Price</th>
+            <th scope="col">Quantity</th>
+            <th scope="col" class="text-end">Subtotal</th>
+            <th scope="col">Actions</th>
+        </tr>
+    </thead>
+    <tbody class="align-middle">
+        {% for item in cart_items %}
+        <tr class="text-center">
+            <td class="text-start">{{ item.name }}</td>
+            <td>KSh {{ "%.2f"|format(item.price) }}</td>
+            <td>
+                <form action="{{ url_for('update_cart', product_id=item.id) }}" method="post" class="d-inline-flex">
+                    <input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control form-control-sm" style="width: 75px;">
+                    <button type="submit" class="btn btn-sm btn-outline-primary ms-2" title="Update quantity">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </form>
+            </td>
+            <td class="text-end">KSh {{ "%.2f"|format(item.subtotal) }}</td>
+            <td>
+                <a href="{{ url_for('remove_from_cart', product_id=item.id) }}" 
+                   class="btn btn-sm btn-outline-danger" 
+                   title="Remove item" onclick="return confirm('Are you sure you want to remove this item?');"><i class="fas fa-trash-alt"></i></a>
+            </td>
+        </tr>
+        {% endfor %}
+        <tr class="table-light">
+            <td colspan="3" class="text-end fs-5"><strong>Total</strong></td>
+            <td class="text-end fs-5"><strong>KSh {{ "%.2f"|format(total) }}</strong></td>
+            <td></td>
+        </tr>
+    </tbody>
+</table>
+<div class="d-flex justify-content-between mt-4">
+    <a href="{{ url_for('home') }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Continue Shopping</a>
+    <a href="{{ url_for('checkout') }}" class="btn btn-success">Proceed to Checkout <i class="fas fa-arrow-right ms-2"></i></a>
+</div>
+{% else %}
+<div class="alert alert-info" role="alert">
+    Your cart is empty. <a href="{{ url_for('home') }}" class="alert-link">Start shopping!</a>
+</div>
+{% endif %}
+{% endblock %}
