@@ -14,8 +14,14 @@ app.secret_key = 'supersecretkey'
 app.config['SESSION_TYPE'] = 'filesystem'
 
 # --- Database Configuration ---
+# Use PostgreSQL in production (on Render) and SQLite for local development
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'database.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL or \
+    'sqlite:///' + os.path.join(basedir, 'database.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 Session(app)
