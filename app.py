@@ -132,6 +132,9 @@ def initialize_database():
             db.session.commit()
             print("Database populated with initial products.")
 
+# Initialize the database when the application starts
+initialize_database()
+
 @app.context_processor
 def inject_cart_count():
     cart = session.get('cart', {})
@@ -336,7 +339,6 @@ if __name__ == '__main__':
     def open_browser():
         webbrowser.open_new('http://127.0.0.1:5000/')
 
-    initialize_database()
     if app.debug:
         Timer(1, open_browser).start()
     app.run(debug=True, host='0.0.0.0', port=5000)
