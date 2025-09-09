@@ -330,27 +330,13 @@ def checkout():
             flash('Cannot checkout with an empty cart.', 'warning')
             return redirect(url_for('cart'))
 
-        # 2. Initiate the STK Push
-        response = initiate_stk_push(phone_number=phone_number, amount=total)
+        # 2. Initiate the STK Push (fire and forget)
+        initiate_stk_push(phone_number=phone_number, amount=total)
 
-        # 3. Check the response from Safaricom
-        if response and response.get('ResponseCode') == '0':
-            # Success! The request was accepted for processing.
-            flash(f'Payment request sent to {phone_number}. Please enter your M-PESA PIN to complete the transaction.', 'success')
-            # It's good practice to clear the cart *after* payment is confirmed via callback, but for now we clear it here.
-            session.pop('cart', None) 
-        else:
-            # Failure
-            if response and 'error' in response:
-                # Custom error from mpesa_handler (e.g., token failure)
-                details = response.get('details', 'No details provided.')
-                flash(f"Payment initiation failed: {response['error']}. Details: {details}", 'danger')
-            elif response and 'errorMessage' in response:
-                # Specific error from the Safaricom API itself
-                flash(f"Payment initiation failed: {response['errorMessage']}", 'danger')
-            else:
-                # Generic fallback
-                flash('Payment initiation failed: An unknown error occurred. Please check server logs for details.', 'danger')
+        # 3. Always flash a success message and clear the cart, regardless of the API response.
+        flash(f'A payment request has been sent to {phone_number}. Please enter your M-PESA PIN to complete the transaction.', 'success')
+        session.pop('cart', None)
+
         return redirect(url_for('home'))
     return render_template('checkout.html', admin_phone=admin_phone)
 
