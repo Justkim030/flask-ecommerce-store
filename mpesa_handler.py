@@ -47,6 +47,18 @@ def initiate_stk_push(phone_number, amount, account_reference="TechKenya", trans
     """
     Initiates an M-PESA STK Push request.
     """
+    # --- 1. Validation Step: Ensure all required credentials are set ---
+    required_vars = {
+        "MPESA_BUSINESS_SHORTCODE": MPESA_BUSINESS_SHORTCODE,
+        "MPESA_PASSKEY": MPESA_PASSKEY,
+        "MPESA_CALLBACK_URL": MPESA_CALLBACK_URL
+    }
+    missing_vars = [key for key, value in required_vars.items() if not value]
+    if missing_vars:
+        error_msg = f"Missing M-PESA environment variables: {', '.join(missing_vars)}"
+        print(error_msg)
+        return {"error": "Server configuration error.", "details": error_msg}
+
     access_token, error = get_mpesa_access_token()
     if error:
         # Propagate the detailed error from the token function
