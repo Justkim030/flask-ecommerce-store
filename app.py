@@ -341,8 +341,16 @@ def checkout():
             session.pop('cart', None) 
         else:
             # Failure
-            error_message = response.get('errorMessage', 'An unknown error occurred.') if response else 'Failed to connect to M-PESA.'
-            flash(f'Payment initiation failed: {error_message}', 'danger')
+            if response and 'error' in response:
+                # Custom error from mpesa_handler (e.g., token failure)
+                details = response.get('details', 'No details provided.')
+                flash(f"Payment initiation failed: {response['error']}. Details: {details}", 'danger')
+            elif response and 'errorMessage' in response:
+                # Specific error from the Safaricom API itself
+                flash(f"Payment initiation failed: {response['errorMessage']}", 'danger')
+            else:
+                # Generic fallback
+                flash('Payment initiation failed: An unknown error occurred. Please check server logs for details.', 'danger')
         return redirect(url_for('home'))
     return render_template('checkout.html', admin_phone=admin_phone)
 
