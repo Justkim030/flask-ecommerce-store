@@ -5,12 +5,15 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
 from sqlalchemy.exc import OperationalError
+from dotenv import load_dotenv
 import webbrowser
 from threading import Timer
 import os
 
+load_dotenv() # Load environment variables from .env file
+
 app = Flask(__name__)
-app.secret_key = 'supersecretkey'
+app.secret_key = os.environ.get('SECRET_KEY', 'a-default-fallback-secret-key-for-dev')
 app.config['SESSION_TYPE'] = 'filesystem'
 
 # --- Database Configuration ---
@@ -40,9 +43,16 @@ class Product(db.Model):
     price = db.Column(db.Float, nullable=False)
     old_price = db.Column(db.Float)
     rating = db.Column(db.Float)
-    description = db.Column(db.String(200)) # Storing as comma-separated string
-    image = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.String(500)) # Storing as comma-separated string
+    image = db.Column(db.String(500), nullable=False)
     category = db.Column(db.String(80), nullable=False)
+
+    @property
+    def web_image_path(self):
+        """Ensures the image path uses forward slashes for web URLs."""
+        if self.image:
+            return self.image.replace('\\', '/')
+        return None
 
     # Helper to convert description from/to list
     @property
@@ -79,51 +89,51 @@ def initialize_database():
         if Product.query.count() == 0:
             print("Product table is empty. Populating with initial products...")
             initial_products = {
-                1: {'name': 'HP ProBook 445 14" G11 Notebook', 'price': 85000, 'old_price': 95000, 'rating': 4.5, 'description': ['AMD R5-7535U', '8GB RAM', '512GB SSD'], 'image': 'products/laptops/hp-probook-445.png', 'category': 'Laptops'},
-                2: {'name': 'HP EliteBook 630 G10 Core i7', 'price': 95000, 'old_price': 110000, 'rating': 4.8, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD'], 'image': 'products/laptops/hp-elitebook-630.jpg', 'category': 'Laptops'},
-                3: {'name': 'Lenovo V14 Gen2 14" Intel', 'price': 75000, 'old_price': 82000, 'rating': 4.2, 'description': ['Intel Core i5', '8GB RAM', '256GB SSD'], 'image': 'products/laptops/lenovo-v14.jpg', 'category': 'Laptops'},
-                14: {'name': 'Dell XPS 15', 'price': 180000, 'old_price': 200000, 'rating': 4.9, 'description': ['Intel Core i9', '32GB RAM', '1TB SSD', 'OLED Display'], 'image': 'products/laptops/dell-xps-15.jpg', 'category': 'Laptops'},
-                15: {'name': 'Apple MacBook Air M2', 'price': 150000, 'old_price': 165000, 'rating': 4.9, 'description': ['Apple M2 Chip', '8GB RAM', '256GB SSD', 'Liquid Retina'], 'image': 'products/laptops/macbook-air-m2.jpg', 'category': 'Laptops'},
-                16: {'name': 'Lenovo ThinkPad X1 Carbon', 'price': 165000, 'old_price': 180000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', 'Lightweight'], 'image': 'products/laptops/thinkpad-x1.jpg', 'category': 'Laptops'},
-                17: {'name': 'Asus ROG Zephyrus G14', 'price': 190000, 'old_price': 210000, 'rating': 4.8, 'description': ['AMD Ryzen 9', '16GB RAM', '1TB SSD', 'RTX 3060'], 'image': 'products/laptops/asus-rog-g14.jpg', 'category': 'Laptops'},
-                18: {'name': 'Microsoft Surface Laptop 5', 'price': 130000, 'old_price': 140000, 'rating': 4.6, 'description': ['Intel Core i5', '8GB RAM', '512GB SSD', 'Touchscreen'], 'image': 'products/laptops/surface-laptop-5.jpg', 'category': 'Laptops'},
-                19: {'name': 'Acer Swift 3', 'price': 88000, 'old_price': 98000, 'rating': 4.4, 'description': ['AMD Ryzen 7', '8GB RAM', '512GB SSD', '14" FHD IPS'], 'image': 'products/laptops/acer-swift-3.jpg', 'category': 'Laptops'},
-                20: {'name': 'HP Spectre x360', 'price': 145000, 'old_price': 160000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD', '2-in-1 Convertible'], 'image': 'products/laptops/hp-spectre-x360.jpg', 'category': 'Laptops'},
-                36: {'name': 'Razer Blade 15', 'price': 220000, 'old_price': 240000, 'rating': 4.8, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', 'RTX 3070Ti'], 'image': 'products/laptops/razer-blade-15.jpg', 'category': 'Laptops'},
-                37: {'name': 'LG Gram 17', 'price': 160000, 'old_price': 175000, 'rating': 4.6, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', 'Ultra-lightweight'], 'image': 'products/laptops/lg-gram-17.jpg', 'category': 'Laptops'},
-                38: {'name': 'Samsung Galaxy Book3 Pro', 'price': 155000, 'old_price': 170000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD', 'AMOLED 2X'], 'image': 'products/laptops/galaxy-book3-pro.jpg', 'category': 'Laptops'},
-                39: {'name': 'Framework Laptop 13', 'price': 140000, 'old_price': 150000, 'rating': 4.9, 'description': ['Intel Core i5', '16GB RAM', '512GB SSD', 'Repairable'], 'image': 'products/laptops/framework-13.jpg', 'category': 'Laptops'},
-                40: {'name': 'Google Pixelbook Go', 'price': 95000, 'old_price': 110000, 'rating': 4.5, 'description': ['Intel Core i5', '8GB RAM', '128GB SSD', 'ChromeOS'], 'image': 'products/laptops/pixelbook-go.jpg', 'category': 'Laptops'},
-                6: {'name': 'Gaming PC Pro', 'price': 120000, 'old_price': 135000, 'rating': 4.9, 'description': ['Ryzen 7', '32GB RAM', '1TB NVMe SSD', 'RTX 4060'], 'image': 'products/desktops/gaming-pc.webp', 'category': 'Desktops'},
-                21: {'name': 'Apple iMac 24"', 'price': 180000, 'old_price': 195000, 'rating': 4.8, 'description': ['Apple M1 Chip', '8GB RAM', '256GB SSD', '4.5K Retina'], 'image': 'products/desktops/imac-24.jpg', 'category': 'Desktops'},
-                22: {'name': 'HP Pavilion Gaming Desktop', 'price': 98000, 'old_price': 110000, 'rating': 4.6, 'description': ['Intel Core i5', '16GB RAM', '512GB SSD', 'GTX 1660 Super'], 'image': 'products/desktops/hp-pavilion-gaming.jpg', 'category': 'Desktops'},
-                23: {'name': 'Dell Inspiron Compact Desktop', 'price': 65000, 'old_price': 75000, 'rating': 4.3, 'description': ['Intel Core i5', '12GB RAM', '256GB SSD', 'Small Form Factor'], 'image': 'products/desktops/dell-inspiron.jpg', 'category': 'Desktops'},
-                24: {'name': 'Lenovo IdeaCentre AIO 3', 'price': 85000, 'old_price': 95000, 'rating': 4.5, 'description': ['AMD Ryzen 5', '8GB RAM', '512GB SSD', '24" FHD Display'], 'image': 'products/desktops/lenovo-aio.jpg', 'category': 'Desktops'},
-                25: {'name': 'Alienware Aurora R15', 'price': 250000, 'old_price': 280000, 'rating': 4.9, 'description': ['Intel Core i9', '32GB RAM', '2TB SSD', 'RTX 4080'], 'image': 'products/desktops/alienware-aurora.jpg', 'category': 'Desktops'},
-                26: {'name': 'Intel NUC Mini PC', 'price': 55000, 'old_price': 62000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '512GB NVMe', 'Ultra Compact'], 'image': 'products/desktops/intel-nuc.jpg', 'category': 'Desktops'},
-                27: {'name': 'HP Envy All-in-One 34"', 'price': 220000, 'old_price': 240000, 'rating': 4.8, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', '5K Display'], 'image': 'products/desktops/hp-envy-aio.jpg', 'category': 'Desktops'},
-                28: {'name': 'Office Workstation PC', 'price': 78000, 'old_price': 85000, 'rating': 4.4, 'description': ['Intel Core i7', '16GB RAM', '1TB HDD + 256GB SSD'], 'image': 'products/desktops/office-pc.jpg', 'category': 'Desktops'},
-                29: {'name': 'Mac Mini M2', 'price': 90000, 'old_price': 100000, 'rating': 4.8, 'description': ['Apple M2 Chip', '8GB RAM', '256GB SSD', 'Compact Power'], 'image': 'products/desktops/mac-mini.jpg', 'category': 'Desktops'},
-                41: {'name': 'Corsair Vengeance i7400', 'price': 280000, 'old_price': 310000, 'rating': 4.9, 'description': ['Intel Core i7', '32GB DDR5', '2TB NVMe SSD', 'RTX 4070'], 'image': 'products/desktops/corsair-vengeance.jpg', 'category': 'Desktops'},
-                42: {'name': 'MSI Trident AS', 'price': 210000, 'old_price': 230000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', 'RTX 3060Ti'], 'image': 'products/desktops/msi-trident.jpg', 'category': 'Desktops'},
-                43: {'name': 'HP Omen 45L', 'price': 260000, 'old_price': 290000, 'rating': 4.8, 'description': ['AMD Ryzen 9', '32GB RAM', '1TB SSD + 1TB HDD', 'RTX 4070Ti'], 'image': 'products/desktops/hp-omen-45l.jpg', 'category': 'Desktops'},
-                44: {'name': 'NZXT Player: Two', 'price': 190000, 'old_price': 205000, 'rating': 4.7, 'description': ['AMD Ryzen 5', '16GB RAM', '1TB NVMe SSD', 'RTX 3070'], 'image': 'products/desktops/nzxt-player-two.jpg', 'category': 'Desktops'},
-                45: {'name': 'Lenovo Legion Tower 5i', 'price': 175000, 'old_price': 190000, 'rating': 4.6, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD + 1TB HDD', 'RTX 3060'], 'image': 'products/desktops/lenovo-legion-tower.jpg', 'category': 'Desktops'},
-                4: {'name': 'TP-Link Archer C6 WiFi Router', 'price': 5000, 'old_price': 6500, 'rating': 4.6, 'description': ['Dual Band', '4 Antennas', 'Gigabit Ports'], 'image': 'products/accessories/wifi-router.webp', 'category': 'Accessories'},
-                5: {'name': 'Office Gadgets Set', 'price': 3000, 'old_price': 3500, 'rating': 4.1, 'description': ['Desk Organizer', 'Phone Stand', 'Cable Clips'], 'image': 'products/accessories/office-gadgets.avif', 'category': 'Accessories'},
-                7: {'name': 'Laptop Accessory Kit', 'price': 2500, 'old_price': 3000, 'rating': 4.3, 'description': ['Laptop Sleeve', 'USB Hub', 'Mini Mouse'], 'image': 'products/accessories/laptop-kit.jpg', 'category': 'Accessories'},
-                8: {'name': 'Logitech MX Master 3S Mouse', 'price': 12000, 'old_price': 15000, 'rating': 4.9, 'description': ['Ergonomic Design', '8K DPI Sensor', 'Quiet Clicks'], 'image': 'products/accessories/logitech-mx-master.jpg', 'category': 'Accessories'},
-                9: {'name': 'Keychron K2 Mechanical Keyboard', 'price': 9500, 'old_price': 11000, 'rating': 4.8, 'description': ['Wireless/Wired', 'Gateron Switches', 'Mac & Windows'], 'image': 'products/accessories/keychron-k2.jpg', 'category': 'Accessories'},
-                10: {'name': 'SanDisk Ultra 128GB USB Drive', 'price': 1500, 'old_price': 2000, 'rating': 4.9, 'description': ['USB 3.0', '130MB/s Speed', 'Portable'], 'image': 'products/accessories/sandisk-usb.jpg', 'category': 'Accessories'},
-                11: {'name': 'Samsung T7 1TB External SSD', 'price': 11000, 'old_price': 13000, 'rating': 4.8, 'description': ['USB-C', 'Portable SSD', '1,050 MB/s Speed'], 'image': 'products/accessories/samsung-t7-ssd.jpg', 'category': 'Accessories'},
-                12: {'name': 'Logitech C920 HD Pro Webcam', 'price': 8000, 'old_price': 9500, 'rating': 4.7, 'description': ['1080p Full HD', 'Stereo Audio', 'Light Correction'], 'image': 'products/accessories/logitech-c920.jpg', 'category': 'Accessories'},
-                13: {'name': 'Sony WH-1000XM5 Headphones', 'price': 45000, 'old_price': 52000, 'rating': 4.9, 'description': ['Noise Cancelling', 'Wireless', '30-Hour Battery'], 'image': 'products/accessories/sony-xm5.jpg', 'category': 'Accessories'},
-                30: {'name': 'Dell UltraSharp 27" 4K Monitor', 'price': 65000, 'old_price': 75000, 'rating': 4.8, 'description': ['27-inch 4K UHD', 'IPS Panel', 'USB-C Hub'], 'image': 'products/accessories/dell-ultrasharp-27.jpg', 'category': 'Accessories'},
-                31: {'name': 'Anker 737 Power Bank', 'price': 15000, 'old_price': 18000, 'rating': 4.9, 'description': ['24,000mAh', '140W Output', 'Smart Display'], 'image': 'products/accessories/anker-737.jpg', 'category': 'Accessories'},
-                32: {'name': 'SteelSeries QcK Mousepad', 'price': 2000, 'old_price': 2500, 'rating': 4.8, 'description': ['Large Size', 'Micro-Woven Cloth', 'Non-slip Base'], 'image': 'products/accessories/steelseries-qck.jpg', 'category': 'Accessories'},
-                33: {'name': 'HP LaserJet Pro M404dn', 'price': 35000, 'old_price': 40000, 'rating': 4.6, 'description': ['Monochrome Laser', 'Fast Printing', 'Network Ready'], 'image': 'products/accessories/hp-laserjet.jpg', 'category': 'Accessories'},
-                34: {'name': 'Logitech Z407 Bluetooth Speakers', 'price': 9000, 'old_price': 11000, 'rating': 4.5, 'description': ['80W Peak Power', 'Subwoofer', 'Wireless Control'], 'image': 'products/accessories/logitech-z407.jpg', 'category': 'Accessories'},
-                35: {'name': 'Rain Design mStand Laptop Stand', 'price': 5500, 'old_price': 6500, 'rating': 4.9, 'description': ['Ergonomic', 'Aluminum Design', 'Cable Organizer'], 'image': 'products/accessories/rain-mstand.jpg', 'category': 'Accessories'},
+                1: {'name': 'HP ProBook 445 14" G11 Notebook', 'price': 85000, 'old_price': 95000, 'rating': 4.5, 'description': ['AMD R5-7535U', '8GB RAM', '512GB SSD'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=HP+ProBook', 'category': 'Laptops'},
+                2: {'name': 'HP EliteBook 630 G10 Core i7', 'price': 95000, 'old_price': 110000, 'rating': 4.8, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=HP+EliteBook', 'category': 'Laptops'},
+                3: {'name': 'Lenovo V14 Gen2 14" Intel', 'price': 75000, 'old_price': 82000, 'rating': 4.2, 'description': ['Intel Core i5', '8GB RAM', '256GB SSD'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Lenovo+V14', 'category': 'Laptops'},
+                14: {'name': 'Dell XPS 15', 'price': 180000, 'old_price': 200000, 'rating': 4.9, 'description': ['Intel Core i9', '32GB RAM', '1TB SSD', 'OLED Display'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Dell+XPS+15', 'category': 'Laptops'},
+                15: {'name': 'Apple MacBook Air M2', 'price': 150000, 'old_price': 165000, 'rating': 4.9, 'description': ['Apple M2 Chip', '8GB RAM', '256GB SSD', 'Liquid Retina'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=MacBook+Air', 'category': 'Laptops'},
+                16: {'name': 'Lenovo ThinkPad X1 Carbon', 'price': 165000, 'old_price': 180000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', 'Lightweight'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=ThinkPad+X1', 'category': 'Laptops'},
+                17: {'name': 'Asus ROG Zephyrus G14', 'price': 190000, 'old_price': 210000, 'rating': 4.8, 'description': ['AMD Ryzen 9', '16GB RAM', '1TB SSD', 'RTX 3060'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Asus+ROG', 'category': 'Laptops'},
+                18: {'name': 'Microsoft Surface Laptop 5', 'price': 130000, 'old_price': 140000, 'rating': 4.6, 'description': ['Intel Core i5', '8GB RAM', '512GB SSD', 'Touchscreen'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Surface+Laptop', 'category': 'Laptops'},
+                19: {'name': 'Acer Swift 3', 'price': 88000, 'old_price': 98000, 'rating': 4.4, 'description': ['AMD Ryzen 7', '8GB RAM', '512GB SSD', '14" FHD IPS'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Acer+Swift+3', 'category': 'Laptops'},
+                20: {'name': 'HP Spectre x360', 'price': 145000, 'old_price': 160000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD', '2-in-1 Convertible'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=HP+Spectre', 'category': 'Laptops'},
+                36: {'name': 'Razer Blade 15', 'price': 220000, 'old_price': 240000, 'rating': 4.8, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', 'RTX 3070Ti'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Razer+Blade', 'category': 'Laptops'},
+                37: {'name': 'LG Gram 17', 'price': 160000, 'old_price': 175000, 'rating': 4.6, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', 'Ultra-lightweight'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=LG+Gram', 'category': 'Laptops'},
+                38: {'name': 'Samsung Galaxy Book3 Pro', 'price': 155000, 'old_price': 170000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD', 'AMOLED 2X'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Galaxy+Book3', 'category': 'Laptops'},
+                39: {'name': 'Framework Laptop 13', 'price': 140000, 'old_price': 150000, 'rating': 4.9, 'description': ['Intel Core i5', '16GB RAM', '512GB SSD', 'Repairable'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Framework', 'category': 'Laptops'},
+                40: {'name': 'Google Pixelbook Go', 'price': 95000, 'old_price': 110000, 'rating': 4.5, 'description': ['Intel Core i5', '8GB RAM', '128GB SSD', 'ChromeOS'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Pixelbook+Go', 'category': 'Laptops'},
+                6: {'name': 'Gaming PC Pro', 'price': 120000, 'old_price': 135000, 'rating': 4.9, 'description': ['Ryzen 7', '32GB RAM', '1TB NVMe SSD', 'RTX 4060'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Gaming+PC', 'category': 'Desktops'},
+                21: {'name': 'Apple iMac 24"', 'price': 180000, 'old_price': 195000, 'rating': 4.8, 'description': ['Apple M1 Chip', '8GB RAM', '256GB SSD', '4.5K Retina'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=iMac+24', 'category': 'Desktops'},
+                22: {'name': 'HP Pavilion Gaming Desktop', 'price': 98000, 'old_price': 110000, 'rating': 4.6, 'description': ['Intel Core i5', '16GB RAM', '512GB SSD', 'GTX 1660 Super'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=HP+Pavilion', 'category': 'Desktops'},
+                23: {'name': 'Dell Inspiron Compact Desktop', 'price': 65000, 'old_price': 75000, 'rating': 4.3, 'description': ['Intel Core i5', '12GB RAM', '256GB SSD', 'Small Form Factor'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Dell+Inspiron', 'category': 'Desktops'},
+                24: {'name': 'Lenovo IdeaCentre AIO 3', 'price': 85000, 'old_price': 95000, 'rating': 4.5, 'description': ['AMD Ryzen 5', '8GB RAM', '512GB SSD', '24" FHD Display'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Lenovo+AIO', 'category': 'Desktops'},
+                25: {'name': 'Alienware Aurora R15', 'price': 250000, 'old_price': 280000, 'rating': 4.9, 'description': ['Intel Core i9', '32GB RAM', '2TB SSD', 'RTX 4080'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Alienware', 'category': 'Desktops'},
+                26: {'name': 'Intel NUC Mini PC', 'price': 55000, 'old_price': 62000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '512GB NVMe', 'Ultra Compact'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Intel+NUC', 'category': 'Desktops'},
+                27: {'name': 'HP Envy All-in-One 34"', 'price': 220000, 'old_price': 240000, 'rating': 4.8, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', '5K Display'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=HP+Envy+AIO', 'category': 'Desktops'},
+                28: {'name': 'Office Workstation PC', 'price': 78000, 'old_price': 85000, 'rating': 4.4, 'description': ['Intel Core i7', '16GB RAM', '1TB HDD + 256GB SSD'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Office+PC', 'category': 'Desktops'},
+                29: {'name': 'Mac Mini M2', 'price': 90000, 'old_price': 100000, 'rating': 4.8, 'description': ['Apple M2 Chip', '8GB RAM', '256GB SSD', 'Compact Power'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Mac+Mini', 'category': 'Desktops'},
+                41: {'name': 'Corsair Vengeance i7400', 'price': 280000, 'old_price': 310000, 'rating': 4.9, 'description': ['Intel Core i7', '32GB DDR5', '2TB NVMe SSD', 'RTX 4070'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Corsair', 'category': 'Desktops'},
+                42: {'name': 'MSI Trident AS', 'price': 210000, 'old_price': 230000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', 'RTX 3060Ti'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=MSI+Trident', 'category': 'Desktops'},
+                43: {'name': 'HP Omen 45L', 'price': 260000, 'old_price': 290000, 'rating': 4.8, 'description': ['AMD Ryzen 9', '32GB RAM', '1TB SSD + 1TB HDD', 'RTX 4070Ti'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=HP+Omen', 'category': 'Desktops'},
+                44: {'name': 'NZXT Player: Two', 'price': 190000, 'old_price': 205000, 'rating': 4.7, 'description': ['AMD Ryzen 5', '16GB RAM', '1TB NVMe SSD', 'RTX 3070'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=NZXT+Player', 'category': 'Desktops'},
+                45: {'name': 'Lenovo Legion Tower 5i', 'price': 175000, 'old_price': 190000, 'rating': 4.6, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD + 1TB HDD', 'RTX 3060'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Lenovo+Legion', 'category': 'Desktops'},
+                4: {'name': 'TP-Link Archer C6 WiFi Router', 'price': 5000, 'old_price': 6500, 'rating': 4.6, 'description': ['Dual Band', '4 Antennas', 'Gigabit Ports'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=WiFi+Router', 'category': 'Accessories'},
+                5: {'name': 'Office Gadgets Set', 'price': 3000, 'old_price': 3500, 'rating': 4.1, 'description': ['Desk Organizer', 'Phone Stand', 'Cable Clips'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Office+Gadgets', 'category': 'Accessories'},
+                7: {'name': 'Laptop Accessory Kit', 'price': 2500, 'old_price': 3000, 'rating': 4.3, 'description': ['Laptop Sleeve', 'USB Hub', 'Mini Mouse'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Accessory+Kit', 'category': 'Accessories'},
+                8: {'name': 'Logitech MX Master 3S Mouse', 'price': 12000, 'old_price': 15000, 'rating': 4.9, 'description': ['Ergonomic Design', '8K DPI Sensor', 'Quiet Clicks'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Logitech+Mouse', 'category': 'Accessories'},
+                9: {'name': 'Keychron K2 Mechanical Keyboard', 'price': 9500, 'old_price': 11000, 'rating': 4.8, 'description': ['Wireless/Wired', 'Gateron Switches', 'Mac & Windows'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Keychron+K2', 'category': 'Accessories'},
+                10: {'name': 'SanDisk Ultra 128GB USB Drive', 'price': 1500, 'old_price': 2000, 'rating': 4.9, 'description': ['USB 3.0', '130MB/s Speed', 'Portable'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=SanDisk+USB', 'category': 'Accessories'},
+                11: {'name': 'Samsung T7 1TB External SSD', 'price': 11000, 'old_price': 13000, 'rating': 4.8, 'description': ['USB-C', 'Portable SSD', '1,050 MB/s Speed'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Samsung+SSD', 'category': 'Accessories'},
+                12: {'name': 'Logitech C920 HD Pro Webcam', 'price': 8000, 'old_price': 9500, 'rating': 4.7, 'description': ['1080p Full HD', 'Stereo Audio', 'Light Correction'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Logitech+Webcam', 'category': 'Accessories'},
+                13: {'name': 'Sony WH-1000XM5 Headphones', 'price': 45000, 'old_price': 52000, 'rating': 4.9, 'description': ['Noise Cancelling', 'Wireless', '30-Hour Battery'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Sony+XM5', 'category': 'Accessories'},
+                30: {'name': 'Dell UltraSharp 27" 4K Monitor', 'price': 65000, 'old_price': 75000, 'rating': 4.8, 'description': ['27-inch 4K UHD', 'IPS Panel', 'USB-C Hub'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Dell+Monitor', 'category': 'Accessories'},
+                31: {'name': 'Anker 737 Power Bank', 'price': 15000, 'old_price': 18000, 'rating': 4.9, 'description': ['24,000mAh', '140W Output', 'Smart Display'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Anker+Power+Bank', 'category': 'Accessories'},
+                32: {'name': 'SteelSeries QcK Mousepad', 'price': 2000, 'old_price': 2500, 'rating': 4.8, 'description': ['Large Size', 'Micro-Woven Cloth', 'Non-slip Base'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Mousepad', 'category': 'Accessories'},
+                33: {'name': 'HP LaserJet Pro M404dn', 'price': 35000, 'old_price': 40000, 'rating': 4.6, 'description': ['Monochrome Laser', 'Fast Printing', 'Network Ready'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=HP+LaserJet', 'category': 'Accessories'},
+                34: {'name': 'Logitech Z407 Bluetooth Speakers', 'price': 9000, 'old_price': 11000, 'rating': 4.5, 'description': ['80W Peak Power', 'Subwoofer', 'Wireless Control'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Logitech+Speakers', 'category': 'Accessories'},
+                35: {'name': 'Rain Design mStand Laptop Stand', 'price': 5500, 'old_price': 6500, 'rating': 4.9, 'description': ['Ergonomic', 'Aluminum Design', 'Cable Organizer'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Laptop+Stand', 'category': 'Accessories'},
             }
             for pid, data in initial_products.items():                
                 p = Product(id=pid, name=data['name'], price=data['price'], old_price=data.get('old_price'), rating=data.get('rating'), image=data['image'], category=data['category'])

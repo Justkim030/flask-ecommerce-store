@@ -103,6 +103,12 @@ body {
     color: #6c757d;
 }
 
+.product-title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s ease-in-out;
+}
+
 .product-description-list {
     font-size: 0.8rem;
     color: #6c757d;
