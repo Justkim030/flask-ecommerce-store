@@ -8,6 +8,7 @@ from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv
 import webbrowser
 from threading import Timer
+from mpesa_handler import initiate_stk_push # Import the M-PESA function
 import os
 
 load_dotenv() # Load environment variables from .env file
@@ -307,20 +308,43 @@ def checkout():
         flash('Your cart is empty. Add items before checking out.', 'warning')
         return redirect(url_for('home'))
 
+    admin_phone = '0111214624' # Admin's predefined M-PESA number
+
     if request.method == 'POST':
         phone_number = request.form.get('phone_number')
-        # --- M-PESA API Integration Placeholder ---
-        # 1. Get total amount from the cart.
-        # 2. Call a function that interacts with the Safaricom Daraja API.
-        # 3. The API call would initiate STK push to the phone_number.
-        success = True  # Simulate success response
-        if success:
-            flash(f'Checkout successful! Payment request sent to {phone_number} via M-PESA.', 'success')
-            session.pop('cart', None)
+        
+        # 1. Calculate total amount from the cart
+        cart = session.get('cart', {})
+        total = 0
+        for pid_str, qty in cart.items():
+            product = Product.query.get(int(pid_str))
+            if product:
+                total += product.price * qty
+
+        # Override phone number if the user is an admin
+        if session.get('is_admin'):
+            phone_number = admin_phone
+            flash('Admin checkout: Using predefined M-PESA number.', 'info')
+
+        if total == 0:
+            flash('Cannot checkout with an empty cart.', 'warning')
+            return redirect(url_for('cart'))
+
+        # 2. Initiate the STK Push
+        response = initiate_stk_push(phone_number=phone_number, amount=total)
+
+        # 3. Check the response from Safaricom
+        if response and response.get('ResponseCode') == '0':
+            # Success! The request was accepted for processing.
+            flash(f'Payment request sent to {phone_number}. Please enter your M-PESA PIN to complete the transaction.', 'success')
+            # It's good practice to clear the cart *after* payment is confirmed via callback, but for now we clear it here.
+            session.pop('cart', None) 
         else:
-            flash('Payment failed. Please try again.', 'danger')
+            # Failure
+            error_message = response.get('errorMessage', 'An unknown error occurred.') if response else 'Failed to connect to M-PESA.'
+            flash(f'Payment initiation failed: {error_message}', 'danger')
         return redirect(url_for('home'))
-    return render_template('checkout.html')
+    return render_template('checkout.html', admin_phone=admin_phone)
 
 @app.route('/mpesa_callback', methods=['POST'])
 def mpesa_callback():
