@@ -18,26 +18,39 @@ STK_PUSH_URL = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
 def get_mpesa_access_token():
     """
     Makes a request to the Safaricom API to get an access token.
+    Returns a tuple (access_token, error_message).
     """
     if not MPESA_CONSUMER_KEY or not MPESA_CONSUMER_SECRET:
-        print("M-PESA Consumer Key or Secret not configured.")
-        return None
+        error_msg = "M-PESA Consumer Key or Secret not configured in environment variables."
+        print(error_msg)
+        return None, error_msg
         
     try:
         res = requests.get(API_AUTH_URL, auth=HTTPBasicAuth(MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET))
-        res.raise_for_status() # Raise an exception for bad status codes
-        return res.json().get('access_token')
+        res.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+        return res.json().get('access_token'), None
     except requests.exceptions.RequestException as e:
-        print(f"Error getting M-PESA access token: {e}")
-        return None
+        # Safaricom often returns error details in the response body even on failure
+        error_details = str(e)
+        if e.response is not None:
+            try:
+                # Try to parse JSON error response from Safaricom
+                error_details = e.response.json()
+            except ValueError: # Not a JSON response
+                error_details = e.response.text
+        
+        error_msg = f"API request failed. Details: {error_details}"
+        print(f"Error getting M-PESA access token: {error_msg}")
+        return None, error_msg
 
 def initiate_stk_push(phone_number, amount, account_reference="TechKenya", transaction_desc="Payment for goods"):
     """
     Initiates an M-PESA STK Push request.
     """
-    access_token = get_mpesa_access_token()
-    if not access_token:
-        return {"error": "Could not get access token."}
+    access_token, error = get_mpesa_access_token()
+    if error:
+        # Propagate the detailed error from the token function
+        return {"error": "Could not get access token.", "details": error}
 
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     
