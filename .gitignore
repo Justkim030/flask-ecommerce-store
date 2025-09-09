@@ -1,22 +1,16 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Virtual Environments
-venv/
-.venv/
-env/
+# Environment variables
 .env
 
-# Database files
-database.db
-*.sqlite3
+# Python virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
 
 # Flask session files
-/flask_session/
+flask_session/
 
-# IDE / Editor specific
-.vscode/
-.idea/
+# SQLite database
+database.db
+instance/

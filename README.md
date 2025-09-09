@@ -9,13 +9,14 @@ A simple online store built with Flask that allows customers to register, browse
 - Dynamic shopping cart with add, remove, and update quantity functionality.
 - Persistent data storage using an SQLite database.
 - Admin panel for managing users and products.
-- Checkout with M-PESA payment (simulated).
+- Checkout with M-PESA STK Push integration.
 - Styled with a custom, Kilimall-inspired theme using Bootstrap.
 
 ## Requirements
 
 - Python 3.7+
 - Flask
+- requests
 - Flask-Session
 - Flask-SQLAlchemy
 - Flask-Admin
@@ -63,12 +64,14 @@ A simple online store built with Flask that allows customers to register, browse
 
 This app is ready for deployment to hosting platforms like Render or Heroku.
 
-You will need a `Procfile` in your root directory with the following content:
-```
-web: python app.py
-```
-
-And set the environment variable `FLASK_APP=app.py`.
+The `Procfile` is already included for Gunicorn (`web: gunicorn app:app`). On your hosting platform (e.g., Render), you must set the following environment variables:
+-   `SECRET_KEY`: A long, random string for security.
+-   `DATABASE_URL`: The connection string for your production database (e.g., PostgreSQL).
+-   `MPESA_CONSUMER_KEY`
+-   `MPESA_CONSUMER_SECRET`
+-   `MPESA_BUSINESS_SHORTCODE`
+-   `MPESA_PASSKEY`
+-   `MPESA_CALLBACK_URL`: The public URL to your deployed app's `/mpesa_callback` endpoint.
 
 ## Non-Functional Requirements Addressed
 
@@ -80,4 +83,4 @@ And set the environment variable `FLASK_APP=app.py`.
 
 ## Note
 
-This is a demonstration application. For a full production deployment, the primary remaining task is to integrate a real M-PESA payment gateway API.
+This is a demonstration application. The M-PESA STK Push is functional. The next critical step for a full production deployment is to **implement the logic in the `/mpesa_callback` endpoint** to securely verify payment confirmations from Safaricom and create a persistent order history in the database.
