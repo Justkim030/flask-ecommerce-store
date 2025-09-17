@@ -3,6 +3,7 @@ from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_admin import Admin
+from flask_admin.form import ImageUploadField
 from flask_admin.contrib.sqla import ModelView
 from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv
@@ -146,6 +147,24 @@ def initialize_database():
 # Initialize the database when the application starts
 initialize_database()
 
+@app.route('/admin/reseed-products')
+def reseed_products():
+    """
+    An admin-only route to clear and re-populate the product database.
+    This is useful for development to apply changes from initial_products.
+    """
+    if not session.get('is_admin'):
+        flash('You do not have permission to perform this action.', 'danger')
+        return redirect(url_for('home'))
+
+    # Clear the Product table
+    db.session.query(Product).delete()
+    db.session.commit()
+    flash('All products have been deleted. Repopulating database...', 'warning')
+    initialize_database() # This will now run the product population logic
+    flash('Product database has been successfully re-seeded.', 'success')
+    return redirect(url_for('admin.index'))
+
 @app.context_processor
 def inject_cart_count():
     cart = session.get('cart', {})
@@ -182,6 +201,16 @@ def home():
                            categories=all_categories, 
                            categorized_products=categorized_products,
                            selected_category=selected_category)
+
+@app.route('/product/<int:product_id>')
+def product_detail(product_id):
+    product = Product.query.get_or_404(product_id)
+    # You could also fetch related products here to show on the page
+    related_products = Product.query.filter(
+        Product.category == product.category, 
+        Product.id != product.id
+    ).limit(4).all()
+    return render_template('product_detail.html', product=product, related_products=related_products)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -358,9 +387,29 @@ class SecureModelView(ModelView):
         # Redirect non-admin users to the login page
         return redirect(url_for('login', next=request.url))
 
+# --- Custom Admin View for Products with Image Upload ---
+# Define the path for image uploads relative to the app's root directory
+upload_path = os.path.join(os.path.dirname(__file__), 'static/images')
+
+# Create the directory if it doesn't exist
+try:
+    os.makedirs(upload_path)
+except OSError:
+    pass
+
+class ProductAdminView(SecureModelView):
+    # Override the form to include an image upload field
+    form_overrides = {
+        'image': ImageUploadField('Image',
+                                  base_path=upload_path,
+                                  relative_path='',
+                                  thumbnail_size=(100, 100, True))
+    }
+
 admin = Admin(app, name='Tech Kenya Admin', template_mode='bootstrap4')
 admin.add_view(SecureModelView(User, db.session))
-admin.add_view(SecureModelView(Product, db.session))
+# Replace the default Product view with our new custom one
+admin.add_view(ProductAdminView(Product, db.session))
 
 if __name__ == '__main__':
     # Open the web browser automatically
