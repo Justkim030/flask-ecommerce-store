@@ -91,6 +91,7 @@ def initialize_database():
             print("Product table is empty. Populating with initial products...")
             initial_products = {
                 1: {'name': 'HP ProBook 445 14" G11 Notebook', 'price': 85000, 'old_price': 95000, 'rating': 4.5, 'description': ['AMD R5-7535U', '8GB RAM', '512GB SSD'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=HP+ProBook', 'category': 'Laptops'},
+                2: {'name': 'HP fice Workstation PC', 'price': 78000, 'old_price': 85000, 'rating': 4.4, 'description': ['Intel Core i7', '16GB RAM', '1TB HDD + 256GB SSD'], 'image': 'images/download (4).jpg', 'category': 'Desktops'},
                 2: {'name': 'HP EliteBook 630 G10 Core i7', 'price': 95000, 'old_price': 110000, 'rating': 4.8, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=HP+EliteBook', 'category': 'Laptops'},
                 3: {'name': 'Lenovo V14 Gen2 14" Intel', 'price': 75000, 'old_price': 82000, 'rating': 4.2, 'description': ['Intel Core i5', '8GB RAM', '256GB SSD'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Lenovo+V14', 'category': 'Laptops'},
                 14: {'name': 'Dell XPS 15', 'price': 180000, 'old_price': 200000, 'rating': 4.9, 'description': ['Intel Core i9', '32GB RAM', '1TB SSD', 'OLED Display'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Dell+XPS+15', 'category': 'Laptops'},
@@ -113,6 +114,22 @@ def initialize_database():
                 25: {'name': 'Alienware Aurora R15', 'price': 250000, 'old_price': 280000, 'rating': 4.9, 'description': ['Intel Core i9', '32GB RAM', '2TB SSD', 'RTX 4080'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Alienware', 'category': 'Desktops'},
                 26: {'name': 'Intel NUC Mini PC', 'price': 55000, 'old_price': 62000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '512GB NVMe', 'Ultra Compact'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Intel+NUC', 'category': 'Desktops'},
                 27: {'name': 'HP Envy All-in-One 34"', 'price': 220000, 'old_price': 240000, 'rating': 4.8, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', '5K Display'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=HP+Envy+AIO', 'category': 'Desktops'},
+                29: {'name': 'Mac Mini M2', 'price': 90000, 'old_price': 100000, 'rating': 4.8, 'description': ['Apple M2 Chip', '8GB RAM', '256GB SSD', 'Compact Power'], 'image': 'images/download (5).jpg', 'category': 'Desktops'},
+                41: {'name': 'Corsair Vengeance i7400', 'price': 280000, 'old_price': 310000, 'rating': 4.9, 'description': ['Intel Core i7', '32GB DDR5', '2TB NVMe SSD', 'RTX 4070'], 'image': 'images/download (6).jpg', 'category': 'Desktops'},
+                42: {'name': 'MSI Trident AS', 'price': 210000, 'old_price': 230000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', 'RTX 3060Ti'], 'image': 'images/download (7).jpg', 'category': 'Desktops'},
+                43: {'name': 'HP Omen 45L', 'price': 260000, 'old_price': 290000, 'rating': 4.8, 'description': ['AMD Ryzen 9', '32GB RAM', '1TB SSD + 1TB HDD', 'RTX 4070Ti'], 'image': 'images/images.jpg', 'category': 'Desktops'},
+                44: {'name': 'NZXT Player: Two', 'price': 190000, 'old_price': 205000, 'rating': 4.7, 'description': ['AMD Ryzen 5', '16GB RAM', '1TB NVMe SSD', 'RTX 3070'], 'image': 'images/images (1).jpg', 'category': 'Desktops'},
+                45: {'name': 'Lenovo Legion Tower 5i', 'price': 175000, 'old_price': 190000, 'rating': 4.6, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD + 1TB HDD', 'RTX 3060'], 'image': 'images/images (2).jpg', 'category': 'Desktops'},
+                4: {'name': 'TP-Link Archer C6 WiFi Router', 'price': 5000, 'old_price': 6500, 'rating': 4.6, 'description': ['Dual Band', '4 Antennas', 'Gigabit Ports'], 'image': 'images/wifirouters-2048px-3572.webp', 'category': 'Accessories'},
+                5: {'name': 'Office Gadgets Set', 'price': 3000, 'old_price': 3500, 'rating': 4.1, 'description': ['Desk Organizer', 'Phone Stand', 'Cable Clips'], 'image': 'images/gh-office-gadgets-66042b2e9168c.avif', 'category': 'Accessories'},
+                7: {'name': 'Laptop Accessory Kit', 'price': 2500, 'old_price': 3000, 'rating': 4.3, 'description': ['Laptop Sleeve', 'USB Hub', 'Mini Mouse'], 'image': 'images/download.jpg', 'category': 'Accessories'},
+                8: {'name': 'Logitech MX Master 3S Mouse', 'price': 12000, 'old_price': 15000, 'rating': 4.9, 'description': ['Ergonomic Design', '8K DPI Sensor', 'Quiet Clicks'], 'image': 'images/download (1).jpg', 'category': 'Accessories'},
+                9: {'name': 'Keychron K2 Mechanical Keyboard', 'price': 9500, 'old_price': 11000, 'rating': 4.8, 'description': ['Wireless/Wired', 'Gateron Switches', 'Mac & Windows'], 'image': 'images/download (2).jpg', 'category': 'Accessories'},
+                10: {'name': 'SanDisk Ultra 128GB USB Drive', 'price': 1500, 'old_price': 2000, 'rating': 4.9, 'description': ['USB 3.0', '130MB/s Speed', 'Portable'], 'image': 'images/download (3).jpg', 'category': 'Accessories'},
+                11: {'name': 'Samsung T7 1TB External SSD', 'price': 11000, 'old_price': 13000, 'rating': 4.8, 'description': ['USB-C', 'Portable SSD', '1,050 MB/s Speed'], 'image': 'images/download (4).jpg', 'category': 'Accessories'},
+                12: {'name': 'Logitech C920 HD Pro Webcam', 'price': 8000, 'old_price': 9500, 'rating': 4.7, 'description': ['1080p Full HD', 'Stereo Audio', 'Light Correction'], 'image': 'images/download (5).jpg', 'category': 'Accessories'},
+                13: {'name': 'Sony WH-1000XM5 Headphones', 'price': 45000, 'old_price': 52000, 'rating': 4.9, 'description': ['Noise Cancelling', 'Wireless', '30-Hour Battery'], 'image': 'images/download (6).jpg', 'category': 'Accessories'},
+                30: {'name': 'Dell UltraSharp 27" 4K Monitor', 'price': 65000, 'old_price': 75000, 'rating': 4.8, 'description': ['27-inch 4K UHD', 'IPS Panel', 'USB-C Hub'], 'image': 'images/download (7).jpg', 'category': 'Accessories'},
                 28: {'name': 'Office Workstation PC', 'price': 78000, 'old_price': 85000, 'rating': 4.4, 'description': ['Intel Core i7', '16GB RAM', '1TB HDD + 256GB SSD'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Office+PC', 'category': 'Desktops'},
                 29: {'name': 'Mac Mini M2', 'price': 90000, 'old_price': 100000, 'rating': 4.8, 'description': ['Apple M2 Chip', '8GB RAM', '256GB SSD', 'Compact Power'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Mac+Mini', 'category': 'Desktops'},
                 41: {'name': 'Corsair Vengeance i7400', 'price': 280000, 'old_price': 310000, 'rating': 4.9, 'description': ['Intel Core i7', '32GB DDR5', '2TB NVMe SSD', 'RTX 4070'], 'image': 'https://placehold.co/400x300/f4f4f4/333?text=Corsair', 'category': 'Desktops'},
@@ -367,6 +384,6 @@ if __name__ == '__main__':
     def open_browser():
         webbrowser.open_new('http://127.0.0.1:5000/')
 
-    if app.debug:
-        Timer(1, open_browser).start()
+    if app.debug:e
+    app.run(debug=True, host='0.0.0.0', port=5000)
     app.run(debug=True, host='0.0.0.0', port=5000)
