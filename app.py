@@ -398,12 +398,16 @@ except OSError:
     pass
 
 class ProductAdminView(SecureModelView):
-    # Override the form to include an image upload field
     form_overrides = {
-        'image': ImageUploadField('Image',
-                                  base_path=upload_path,
-                                  relative_path='',
-                                  thumbnail_size=(100, 100, True))
+        'image': ImageUploadField
+    }
+    form_args = {
+        'image': {
+            "label": "Image",
+            "base_path": upload_path,
+            "relative_path": "",
+            "thumbnail_size": (100, 100, True),
+        }
     }
 
 admin = Admin(app, name='Tech Kenya Admin', template_mode='bootstrap4')
