@@ -32,9 +32,9 @@
                     {% for product in products %}
                         <div class="carousel-item {% if loop.first %}active{% endif %}">
                             {% if product.web_image_path and product.web_image_path.startswith('http') %}
-                                <img src="{{ product.web_image_path }}" class="d-block w-100" alt="{{ product.name }}">
+                                <img src="{{ product.image }}" class="d-block w-100" alt="{{ product.name }}">
                             {% else %}
-                                <img src="{{ url_for('static', filename=product.web_image_path if product.web_image_path else 'images/placeholder.png') }}" class="d-block w-100" alt="{{ product.name }}">
+                                <img src="{{ url_for('static', filename='images/' + (product.image if product.image else 'placeholder.png')) }}" class="d-block w-100" alt="{{ product.name }}">
                             {% endif %}
                             <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded">
                                 <h5>{{ product.name }}</h5>
@@ -69,9 +69,9 @@
                             <div class="card h-100 position-relative">
                                 <div class="position-relative">
                                     {% if product.web_image_path and product.web_image_path.startswith('http') %}
-                                        <img src="{{ product.web_image_path }}" class="card-img-top" alt="{{ product.name }}">
+                                        <img src="{{ product.image }}" class="card-img-top" alt="{{ product.name }}">
                                     {% else %}
-                                        <img src="{{ url_for('static', filename=product.web_image_path if product.web_image_path else 'images/placeholder.png') }}" class="card-img-top" alt="{{ product.name }}">
+                                        <img src="{{ url_for('static', filename='images/' + (product.image if product.image else 'placeholder.png')) }}" class="card-img-top" alt="{{ product.name }}">
                                     {% endif %}
                                     {% if product.old_price and product.old_price > product.price %}
                                         {% set discount = ((product.old_price - product.price) / product.old_price * 100) | round | int %}
