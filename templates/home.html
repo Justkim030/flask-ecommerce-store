@@ -27,9 +27,9 @@
         {% if not selected_category %}
         <div id="featuredCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
             <div class="carousel-inner">
-                {% if products and products|length > 0 %}
+                {% if carousel_products and carousel_products|length > 0 %}
                     {# Loop through carousel products passed from the route #}
-                    {% for product in products %}
+                    {% for product in carousel_products %}
                         <div class="carousel-item {% if loop.first %}active{% endif %}">
                             {% if product.image and product.image.startswith('http') %}
                                 <img src="{{ product.image }}" class="d-block w-100" alt="{{ product.name }}">

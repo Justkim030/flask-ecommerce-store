@@ -55,7 +55,37 @@
     <hr>
     <div class="row row-cols-1 row-cols-md-4 g-4">
         {% for related_product in related_products %}
-            {% include '_product_card.html' with context %}
+            <div class="col">
+                <div class="card h-100 position-relative">
+                    <div class="position-relative">
+                        <a href="{{ url_for('product_detail', product_id=related_product.id) }}">
+                            {% if related_product.image and related_product.image.startswith('http') %}
+                                <img src="{{ related_product.image }}" class="card-img-top" alt="{{ related_product.name }}">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='images/' + (related_product.image if related_product.image else 'placeholder.png')) }}" class="card-img-top" alt="{{ related_product.name }}">
+                            {% endif %}
+                        </a>
+                        {% if related_product.old_price and related_product.old_price > related_product.price %}
+                            {% set discount = ((related_product.old_price - related_product.price) / related_product.old_price * 100) | round | int %}
+                            <span class="discount-badge">-{{ discount }}%</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">
+                            <a href="{{ url_for('product_detail', product_id=related_product.id) }}" class="product-title-link">{{ related_product.name }}</a>
+                        </h5>
+                        <div class="mt-auto">
+                            <div class="price-wrapper">
+                                <p class="card-text price">KSh {{ "%.2f"|format(related_product.price) }}</p>
+                                {% if related_product.old_price and related_product.old_price > related_product.price %}
+                                    <p class="card-text old-price">KSh {{ "%.2f"|format(related_product.old_price) }}</p>
+                                {% endif %}
+                            </div>
+                            <a href="{{ url_for('add_to_cart', product_id=related_product.id) }}" class="btn btn-primary w-100 mt-2">Add to Cart</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         {% endfor %}
     </div>
 </div>
