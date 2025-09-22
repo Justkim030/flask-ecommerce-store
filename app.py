@@ -397,10 +397,18 @@ except OSError:
     pass
 
 class ProductAdminView(SecureModelView):
-    # Configure the image upload field directly for better reliability
-    form_overrides = dict(
-        image=ImageUploadField(label='Image', base_path=upload_path, url_relative_path='images/')
-    )
+    # Use form_overrides for the class and form_args for constructor arguments
+    # This is the standard and most stable way to configure custom fields.
+    form_overrides = {
+        'image': ImageUploadField
+    }
+    form_args = {
+        'image': {
+            'label': 'Image',
+            'base_path': upload_path,
+            'url_relative_path': 'images/' # Ensures correct URL generation
+        }
+    }
 
 admin = Admin(app, name='Tech Kenya Admin', template_mode='bootstrap4')
 admin.add_view(SecureModelView(User, db.session))
