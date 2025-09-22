@@ -398,6 +398,7 @@ except OSError:
     pass
 
 class ProductAdminView(SecureModelView):
+    list_template = 'admin/product_list.html'
     form_overrides = {
         'image': ImageUploadField
     }
