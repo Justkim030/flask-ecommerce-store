@@ -1,0 +1,11 @@
+{% extends 'admin/model/list.html' %}
+
+{% block list_header %}
+    <div class="mb-3">
+        <a href="{{ url_for('reseed_products') }}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete ALL products and re-seed them from the initial list? This action cannot be undone.');">
+            <i class="fa fa-exclamation-triangle"></i> Reset/Reseed All Products
+        </a>
+        <p class="text-muted mt-1"><small>This will delete all current products and repopulate the database with the initial product list from the code.</small></p>
+    </div>
+    {{ super() }}
+{% endblock %}
