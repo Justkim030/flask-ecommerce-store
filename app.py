@@ -390,7 +390,6 @@ class SecureModelView(ModelView):
 # --- Custom Admin View for Products with Image Upload ---
 # Define the path for image uploads relative to the app's root directory
 upload_path = os.path.join(os.path.dirname(__file__), 'static/images')
-
 # Create the directory if it doesn't exist
 try:
     os.makedirs(upload_path)
@@ -398,18 +397,10 @@ except OSError:
     pass
 
 class ProductAdminView(SecureModelView):
-    list_template = 'admin/product_list.html'
-    form_overrides = {
-        'image': ImageUploadField
-    }
-    form_args = {
-        'image': {
-            "label": "Image",
-            "base_path": upload_path,
-            "relative_path": "",
-            "thumbnail_size": (100, 100, True),
-        }
-    }
+    # Configure the image upload field directly for better reliability
+    form_overrides = dict(
+        image=ImageUploadField(label='Image', base_path=upload_path, url_relative_path='images/')
+    )
 
 admin = Admin(app, name='Tech Kenya Admin', template_mode='bootstrap4')
 admin.add_view(SecureModelView(User, db.session))

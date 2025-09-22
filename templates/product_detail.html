@@ -9,7 +9,7 @@
         {% if product.image and product.image.startswith('http') %}
             <img src="{{ product.image }}" class="img-fluid rounded" alt="{{ product.name }}">
         {% else %}
-            <img src="{{ url_for('static', filename='images/' + (product.image if product.image else 'placeholder.png')) }}" class="img-fluid rounded" alt="{{ product.name }}">
+            <img src="{{ url_for('static', filename=(product.image if product.image else 'images/placeholder.png')) }}" class="img-fluid rounded" alt="{{ product.name }}">
         {% endif %}
     </div>
 
@@ -62,7 +62,7 @@
                             {% if related_product.image and related_product.image.startswith('http') %}
                                 <img src="{{ related_product.image }}" class="card-img-top" alt="{{ related_product.name }}">
                             {% else %}
-                                <img src="{{ url_for('static', filename='images/' + (related_product.image if related_product.image else 'placeholder.png')) }}" class="card-img-top" alt="{{ related_product.name }}">
+                                <img src="{{ url_for('static', filename=(related_product.image if related_product.image else 'images/placeholder.png')) }}" class="card-img-top" alt="{{ related_product.name }}">
                             {% endif %}
                         </a>
                         {% if related_product.old_price and related_product.old_price > related_product.price %}

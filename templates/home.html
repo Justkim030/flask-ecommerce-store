@@ -34,7 +34,7 @@
                             {% if product.image and product.image.startswith('http') %}
                                 <img src="{{ product.image }}" class="d-block w-100" alt="{{ product.name }}">
                             {% else %}
-                                <img src="{{ url_for('static', filename='images/' + (product.image if product.image else 'placeholder.png')) }}" class="d-block w-100" alt="{{ product.name }}">
+                                <img src="{{ url_for('static', filename=(product.image if product.image else 'images/placeholder.png')) }}" class="d-block w-100" alt="{{ product.name }}">
                             {% endif %}
                             <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded">
                                 <h5>{{ product.name }}</h5>
@@ -71,7 +71,7 @@
                                     {% if product.image and product.image.startswith('http') %}
                                         <img src="{{ product.image }}" class="card-img-top" alt="{{ product.name }}">
                                     {% else %}
-                                        <img src="{{ url_for('static', filename='images/' + (product.image if product.image else 'placeholder.png')) }}" class="card-img-top" alt="{{ product.name }}">
+                                        <img src="{{ url_for('static', filename=(product.image if product.image else 'images/placeholder.png')) }}" class="card-img-top" alt="{{ product.name }}">
                                     {% endif %}
                                     {% if product.old_price and product.old_price > product.price %}
                                         {% set discount = ((product.old_price - product.price) / product.old_price * 100) | round | int %}
