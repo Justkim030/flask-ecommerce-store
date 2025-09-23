@@ -2,6 +2,35 @@
 {% block title %}Home - Tech Accessories Kenya{% endblock %}
 
 {% block content %}
+
+<script>
+    let searchTimeout;
+
+    function performSearch() {
+        const query = document.getElementById('search-input').value;
+        if (query.length > 0) {
+            fetch('{{ url_for('home') }}?q=' + encodeURIComponent(query))
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('.col-md-9').innerHTML;
+                    document.querySelector('.col-md-9').innerHTML = newContent;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(performSearch, 1000); // 1 second delay
+            });
+        }
+    });
+</script>
 <!-- Hero Banner -->
 <div class="hero-banner mb-4 text-center">
     <h2>Welcome to Tech Accessories Kenya</h2>
@@ -13,10 +42,87 @@
     <div class="col-md-3">
         <h5 class="mb-3">Categories</h5>
         <div class="list-group" id="category-sidebar">
-            <a href="{{ url_for('home') }}" class="list-group-item list-group-item-action {% if not selected_category %}active{% endif %}">All Products</a>
+            <a href="{{ url_for('home') }}" class="list-group-item list-group-item-action {% if not selected_category %}active{% endif %}">
+                <i class="fas fa-th-large me-2"></i>All Products
+            </a>
             {% for category in categories %}
             {# Link to the category filter URL #}
-            <a href="{{ url_for('home', category=category) }}" class="list-group-item list-group-item-action {% if selected_category == category %}active{% endif %}">{{ category }}</a>
+            <a href="{{ url_for('home', category=category) }}" class="list-group-item list-group-item-action {% if selected_category == category %}active{% endif %}">
+                {% if category == 'Laptops' %}
+                    <i class="fas fa-laptop me-2"></i>
+                {% elif category == 'Desktops' %}
+                    <i class="fas fa-desktop me-2"></i>
+                {% elif category == 'Monitors' %}
+                    <i class="fas fa-tv me-2"></i>
+                {% elif category == 'Keyboards' %}
+                    <i class="fas fa-keyboard me-2"></i>
+                {% elif category == 'Mice' %}
+                    <i class="fas fa-mouse me-2"></i>
+                {% elif category == 'Headphones' %}
+                    <i class="fas fa-headphones me-2"></i>
+                {% elif category == 'Speakers' %}
+                    <i class="fas fa-volume-up me-2"></i>
+                {% elif category == 'Webcams' %}
+                    <i class="fas fa-video me-2"></i>
+                {% elif category == 'Microphones' %}
+                    <i class="fas fa-microphone me-2"></i>
+                {% elif category == 'Printers' %}
+                    <i class="fas fa-print me-2"></i>
+                {% elif category == 'Scanners' %}
+                    <i class="fas fa-search me-2"></i>
+                {% elif category == 'Hard Drives' %}
+                    <i class="fas fa-hdd me-2"></i>
+                {% elif category == 'SSD' %}
+                    <i class="fas fa-memory me-2"></i>
+                {% elif category == 'USB Drives' %}
+                    <i class="fas fa-usb me-2"></i>
+                {% elif category == 'Memory Cards' %}
+                    <i class="fas fa-sd-card me-2"></i>
+                {% elif category == 'Routers' %}
+                    <i class="fas fa-wifi me-2"></i>
+                {% elif category == 'Modems' %}
+                    <i class="fas fa-network-wired me-2"></i>
+                {% elif category == 'Switches' %}
+                    <i class="fas fa-exchange-alt me-2"></i>
+                {% elif category == 'Cables' %}
+                    <i class="fas fa-plug me-2"></i>
+                {% elif category == 'Adapters' %}
+                    <i class="fas fa-ad me-2"></i>
+                {% elif category == 'Chargers' %}
+                    <i class="fas fa-bolt me-2"></i>
+                {% elif category == 'Batteries' %}
+                    <i class="fas fa-battery-half me-2"></i>
+                {% elif category == 'Cases' %}
+                    <i class="fas fa-briefcase me-2"></i>
+                {% elif category == 'Bags' %}
+                    <i class="fas fa-shopping-bag me-2"></i>
+                {% elif category == 'Stands' %}
+                    <i class="fas fa-ellipsis-h me-2"></i>
+                {% elif category == 'Cooling Pads' %}
+                    <i class="fas fa-fan me-2"></i>
+                {% elif category == 'Docking Stations' %}
+                    <i class="fas fa-dock me-2"></i>
+                {% elif category == 'Graphics Cards' %}
+                    <i class="fas fa-palette me-2"></i>
+                {% elif category == 'Processors' %}
+                    <i class="fas fa-microchip me-2"></i>
+                {% elif category == 'Motherboards' %}
+                    <i class="fas fa-server me-2"></i>
+                {% elif category == 'RAM' %}
+                    <i class="fas fa-memory me-2"></i>
+                {% elif category == 'Power Supplies' %}
+                    <i class="fas fa-plug me-2"></i>
+                {% elif category == 'Cases' %}
+                    <i class="fas fa-box me-2"></i>
+                {% elif category == 'Software' %}
+                    <i class="fas fa-compact-disc me-2"></i>
+                {% elif category == 'Accessories' %}
+                    <i class="fas fa-tools me-2"></i>
+                {% else %}
+                    <i class="fas fa-tag me-2"></i>
+                {% endif %}
+                {{ category }}
+            </a>
             {% endfor %}
         </div>
     </div>
@@ -25,16 +131,19 @@
     <div class="col-md-9">
         <!-- Featured Products Carousel -->
         {% if not selected_category %}
-        <div id="featuredCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+        <div id="featuredCarousel" class="carousel slide mb-4 {% if search_query %}d-none{% endif %}" data-bs-ride="carousel">
             <div class="carousel-inner">
                 {% if carousel_products and carousel_products|length > 0 %}
                     {# Loop through carousel products passed from the route #}
-                    {% for product in carousel_products %}
+                    {% for product in carousel_products %} {# Changed from 'products' to 'carousel_products' #}
                         <div class="carousel-item {% if loop.first %}active{% endif %}">
                             {% if product.image and product.image.startswith('http') %}
-                                <img src="{{ product.image }}" class="d-block w-100" alt="{{ product.name }}">
+                                <img src="{{ product.image }}" class="d-block w-100" alt="{{ product.name }}"
+                                     onerror="this.src='{{ url_for('static', filename='images/pc.webp') }}'">
                             {% else %}
-                                <img src="{{ url_for('static', filename=(product.image if product.image else 'images/placeholder.png')) }}" class="d-block w-100" alt="{{ product.name }}">
+                                <img src="{{ url_for('static', filename=(product.web_image_path if product.web_image_path else 'images/pc.webp')) }}"
+                                     class="d-block w-100" alt="{{ product.name }}"
+                                     onerror="this.src='{{ url_for('static', filename='images/pc.webp') }}'">
                             {% endif %}
                             <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded">
                                 <h5>{{ product.name }}</h5>
@@ -55,57 +164,65 @@
         {% endif %}
 
         <!-- Categorized Product Grid -->
+        {% if search_query %}
+            <h2 class="mb-3">Search Results for "{{ search_query }}"</h2>
+            {% if not categorized_products %}
+                <div class="alert alert-warning">No products found matching your search.</div>
+            {% endif %}
+        {% endif %}
+
         {% if categorized_products %}
             {% for category, products_in_category in categorized_products.items() %}
                 <div class="{{ 'mt-5' if not selected_category }}">
                     {# Only show category headers on the "All Products" page #}
-                    {% if not selected_category %}
+                    {% if not selected_category and not search_query %}
                     <h2>{{ category }}</h2>
                     <hr>
                     {% endif %}
-                    <div class="row row-cols-1 row-cols-md-3 g-4">
+                    <div class="product-grid">
                         {% for product in products_in_category %}
-                        <div class="col">
-                            <div class="card h-100 position-relative">
-                                <div class="position-relative">
+                        <div class="card position-relative">
+                            <div class="position-relative">
+                                <a href="{{ url_for('product_detail', product_id=product.id) }}">
                                     {% if product.image and product.image.startswith('http') %}
-                                        <img src="{{ product.image }}" class="card-img-top" alt="{{ product.name }}">
+                                        <img src="{{ product.image }}" class="card-img-top" alt="{{ product.name }}"
+                                             onerror="this.src='{{ url_for('static', filename='images/pc.webp') }}'">
                                     {% else %}
-                                        <img src="{{ url_for('static', filename=(product.image if product.image else 'images/placeholder.png')) }}" class="card-img-top" alt="{{ product.name }}">
+                                        <img src="{{ url_for('static', filename=(product.web_image_path if product.web_image_path else 'images/pc.webp')) }}" class="card-img-top" alt="{{ product.name }}"
+                                         onerror="this.src='{{ url_for('static', filename='images/pc.webp') }}'">
                                     {% endif %}
-                                    {% if product.old_price and product.old_price > product.price %}
-                                        {% set discount = ((product.old_price - product.price) / product.old_price * 100) | round | int %}
-                                        <span class="discount-badge">-{{ discount }}%</span>
-                                    {% endif %}
-                                </div>
-                                <div class="card-body d-flex flex-column">
-                                    <h5 class="card-title">
-                                        {# This link makes the card clickable. Update href to a product detail page later. #}
-                                        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-title-link">{{ product.name }}</a>
-                                    </h5>
-                                    {% if product.description_list %}
-                                    <ul class="product-description-list list-unstyled">
-                                        {% for feature in product.description_list[:3] %}
-                                        <li>{{ feature }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                    {% endif %}
-                                    <div class="mt-auto">
-                                        <div class="price-wrapper">
-                                            <p class="card-text price">KSh {{ "%.2f"|format(product.price) }}</p>
-                                            {% if product.old_price and product.old_price > product.price %}
-                                                <p class="card-text old-price">KSh {{ "%.2f"|format(product.old_price) }}</p>
-                                            {% endif %}
-                                        </div>
-                                        {% if product.rating %}
-                                        <div class="rating-wrapper">
-                                            {% for i in range(5) %}{% if product.rating >= i + 0.8 %}<i class="fas fa-star"></i>{% elif product.rating >= i + 0.3 %}<i class="fas fa-star-half-alt"></i>{% else %}<i class="far fa-star"></i>{% endif %}{% endfor %}
-                                            <span class="rating-text">{{ product.rating }}</span>
-                                        </div>
+                                </a>
+                                {% if product.old_price and product.old_price > product.price %}
+                                    {% set discount = ((product.old_price - product.price) / product.old_price * 100) | round | int %}
+                                    <span class="discount-badge">-{{ discount }}%</span>
+                                {% endif %}
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">
+                                    <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-title-link">{{ product.name }}</a>
+                                </h5>
+                                {% if product.description_list %}
+                                <ul class="product-description-list list-unstyled">
+                                    {% for feature in product.description_list[:3] %}
+                                    <li>{{ feature }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% endif %}
+                                <div class="mt-auto">
+                                    <div class="price-wrapper">
+                                        <p class="card-text price">KSh {{ "%.2f"|format(product.price) }}</p>
+                                        {% if product.old_price and product.old_price > product.price %}
+                                            <p class="card-text old-price">KSh {{ "%.2f"|format(product.old_price) }}</p>
                                         {% endif %}
-                                        
-                                        <a href="{{ url_for('add_to_cart', product_id=product.id) }}" class="btn btn-primary w-100 mt-2">Add to Cart</a>
                                     </div>
+                                    {% if product.rating %}
+                                    <div class="rating-wrapper">
+                                        {% for i in range(5) %}{% if product.rating >= i + 0.8 %}<i class="fas fa-star"></i>{% elif product.rating >= i + 0.3 %}<i class="fas fa-star-half-alt"></i>{% else %}<i class="far fa-star"></i>{% endif %}{% endfor %}
+                                        <span class="rating-text">{{ product.rating }}</span>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <a href="{{ url_for('add_to_cart', product_id=product.id) }}" class="btn btn-primary w-100 mt-2">Add to Cart</a>
                                 </div>
                             </div>
                         </div>
@@ -114,7 +231,7 @@
                 </div>
             {% endfor %}
         {% else %}
-            <div class="alert alert-warning" role="alert">
+            <div class="alert alert-warning" role="alert" {% if search_query %}style="display: none;"{% endif %}>
                 There are no products in this category. <a href="{{ url_for('home') }}" class="alert-link">View all products.</a>
             </div>
         {% endif %}

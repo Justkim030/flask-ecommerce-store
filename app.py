@@ -65,63 +65,49 @@ class Product(db.Model):
     def description_list(self, value_list):
         self.description = ','.join(value_list)
 
-def initialize_database():
-    """Creates the database tables and populates it with initial data if needed."""
+@app.cli.command('init-db')
+def init_db_command():
+    """Clears the existing data and creates new tables with fresh product data."""
     with app.app_context():
-        db.create_all() # Ensures all tables and columns exist for a new DB.
+        db.drop_all()
+        db.create_all()
+
+        # Create admin user
+        hashed_password = generate_password_hash('admin')
+        admin_user = User(username='admin', password_hash=hashed_password, is_admin=True)
+        db.session.add(admin_user)
+
+        # This list uses local image paths to guarantee they load.
+        initial_products = [
+            # Laptops
+            {'name': 'Apple MacBook Air M2', 'price': 150000, 'old_price': 165000, 'rating': 4.9, 'description': ['Apple M2 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_macbook_air_m2.jpg', 'category': 'Laptops'},
+            {'name': 'Dell XPS 15', 'price': 180000, 'old_price': 200000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','1TB SSD'], 'image': 'images/dell_xps_15.jpg', 'category': 'Laptops'},
+            {'name': 'HP Spectre x360', 'price': 145000, 'old_price': 160000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','512GB SSD'], 'image': 'images/hp_spectre_x360.jpg', 'category': 'Laptops'},
+            {'name': 'Lenovo ThinkPad X1 Carbon', 'price': 165000, 'old_price': 180000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/lenovo_thinkpad_x1_carbon.jpg', 'category': 'Laptops'},
+            {'name': 'Asus ROG Zephyrus G14', 'price': 190000, 'old_price': 210000, 'rating': 4.8, 'description': ['AMD Ryzen 9','16GB RAM','1TB SSD'], 'image': 'images/asus_rog_zephyrus_g14.jpg', 'category': 'Laptops'},
+            
+            # Desktops
+            {'name': 'Apple iMac 24"', 'price': 180000, 'old_price': 195000, 'rating': 4.8, 'description': ['Apple M1 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_imac_24.jpg', 'category': 'Desktops'},
+            {'name': 'Alienware Aurora R15', 'price': 250000, 'old_price': 280000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','2TB SSD'], 'image': 'images/alienware_aurora_r15.jpg', 'category': 'Desktops'},
+            {'name': 'HP Envy All-in-One 34"', 'price': 220000, 'old_price': 240000, 'rating': 4.8, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/hp_envy_all-in-one_34.jpg', 'category': 'Desktops'},
+            {'name': 'Corsair Vengeance i7400', 'price': 280000, 'old_price': 310000, 'rating': 4.9, 'description': ['Intel Core i7','32GB DDR5','2TB NVMe'], 'image': 'images/gaming_pc_pro.jpg', 'category': 'Desktops'},
+            {'name': 'HP Pavilion Gaming Desktop', 'price': 98000, 'old_price': 110000, 'rating': 4.6, 'description': ['Intel Core i5','16GB RAM','512GB SSD'], 'image': 'images/hp_pavilion_gaming_desktop.jpg', 'category': 'Desktops'},
+
+            # Accessories
+            {'name': 'Sony WH-1000XM5 Headphones', 'price': 45000, 'old_price': 52000, 'rating': 4.9, 'description': ['Noise Cancelling','Wireless','30-Hour Battery'], 'image': 'images/sony_wh-1000xm5_headphones.jpg', 'category': 'Accessories'},
+            {'name': 'Logitech MX Master 3S Mouse', 'price': 12000, 'old_price': 15000, 'rating': 4.9, 'description': ['Ergonomic Design','8K DPI Sensor','Quiet Clicks'], 'image': 'images/logitech_mx_master_3s_mouse.jpg', 'category': 'Accessories'},
+            {'name': 'Keychron K2 Mechanical Keyboard', 'price': 9500, 'old_price': 11000, 'rating': 4.8, 'description': ['Wireless/Wired','Gateron Switches','Mac & Windows'], 'image': 'images/keychron_k2_mechanical_keyboard.jpg', 'category': 'Accessories'},
+            {'name': 'Anker 737 Power Bank', 'price': 15000, 'old_price': 18000, 'rating': 4.9, 'description': ['24,000mAh','140W Output','Smart Display'], 'image': 'images/anker_737_power_bank.jpg', 'category': 'Accessories'},
+            {'name': 'Logitech C920 HD Pro Webcam', 'price': 8000, 'old_price': 9500, 'rating': 4.7, 'description': ['1080p Full HD','Stereo Audio','Light Correction'], 'image': 'images/logitech_c920_hd_pro_webcam.jpg', 'category': 'Accessories'},
+        ]
+
+        for data in initial_products:
+            p = Product(name=data['name'], price=data['price'], old_price=data.get('old_price'), rating=data.get('rating'), image=data['image'], category=data['category'])
+            p.description_list = data.get('description', [])
+            db.session.add(p)
         
-        try:
-            # Create admin user if it doesn't exist
-            if User.query.filter_by(username='admin').first() is None:
-                hashed_password = generate_password_hash('admin') # Use a strong password in production
-                admin_user = User(username='admin', password_hash=hashed_password, is_admin=True)
-                db.session.add(admin_user)
-                db.session.commit()
-                print("Admin user created with username 'admin' and password 'admin'.")
-        except OperationalError as e:
-            if "no such column: user.is_admin" in str(e):
-                print("="*60)
-                print("DATABASE SCHEMA ERROR: The 'user' table is missing the 'is_admin' column.")
-                print("SOLUTION: Please DELETE the 'database.db' file in your project folder and restart the application.")
-                print("="*60)
-            # Re-raise the exception to stop the app gracefully
-            raise e
-
-        # Populate products if the table is empty
-        if Product.query.count() == 0:
-            print("Product table is empty. Populating with initial products...")
-            # The initial product list is now empty.
-            # To add products, use the Admin Panel.
-            # To restore the original list, you can get it from the project's Git history.
-            initial_products = {
-                # Laptops (5)
-                1: {'name': 'Apple MacBook Air M2', 'price': 150000, 'old_price': 165000, 'rating': 4.9, 'description': ['Apple M2 Chip', '8GB RAM', '256GB SSD', 'Liquid Retina'], 'image': 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400&h=300&fit=crop', 'category': 'Laptops'},
-                2: {'name': 'Dell XPS 15', 'price': 180000, 'old_price': 200000, 'rating': 4.9, 'description': ['Intel Core i9', '32GB RAM', '1TB SSD', 'OLED Display'], 'image': 'https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?w=400&h=300&fit=crop', 'category': 'Laptops'},
-                3: {'name': 'Asus ROG Zephyrus G14', 'price': 190000, 'old_price': 210000, 'rating': 4.8, 'description': ['AMD Ryzen 9', '16GB RAM', '1TB SSD', 'RTX 3060'], 'image': 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400&h=300&fit=crop', 'category': 'Laptops'},
-                4: {'name': 'HP EliteBook 630 G10 Core i7', 'price': 95000, 'old_price': 110000, 'rating': 4.8, 'description': ['Intel Core i7', '16GB RAM', '512GB SSD'], 'image': 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400&h=300&fit=crop', 'category': 'Laptops'},
-                5: {'name': 'Lenovo ThinkPad X1 Carbon', 'price': 165000, 'old_price': 180000, 'rating': 4.7, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', 'Lightweight'], 'image': 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&h=300&fit=crop', 'category': 'Laptops'},
-                # Desktops (5)
-                6: {'name': 'Apple iMac 24"', 'price': 180000, 'old_price': 195000, 'rating': 4.8, 'description': ['Apple M1 Chip', '8GB RAM', '256GB SSD', '4.5K Retina'], 'image': 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&h=300&fit=crop', 'category': 'Desktops'},
-                7: {'name': 'Gaming PC Pro', 'price': 120000, 'old_price': 135000, 'rating': 4.9, 'description': ['Ryzen 7', '32GB RAM', '1TB NVMe SSD', 'RTX 4060'], 'image': 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop', 'category': 'Desktops'},
-                8: {'name': 'HP Envy All-in-One 34"', 'price': 220000, 'old_price': 240000, 'rating': 4.8, 'description': ['Intel Core i7', '16GB RAM', '1TB SSD', '5K Display'], 'image': 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&h=300&fit=crop', 'category': 'Desktops'},
-                9: {'name': 'Alienware Aurora R15', 'price': 250000, 'old_price': 280000, 'rating': 4.9, 'description': ['Intel Core i9', '32GB RAM', '2TB SSD', 'RTX 4080'], 'image': 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop', 'category': 'Desktops'},
-                10: {'name': 'Corsair Vengeance i7400', 'price': 280000, 'old_price': 310000, 'rating': 4.9, 'description': ['Intel Core i7', '32GB DDR5', '2TB NVMe SSD', 'RTX 4070'], 'image': 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop', 'category': 'Desktops'},
-                # Accessories (5)
-                11: {'name': 'Sony WH-1000XM5 Headphones', 'price': 45000, 'old_price': 52000, 'rating': 4.9, 'description': ['Noise Cancelling', 'Wireless', '30-Hour Battery'], 'image': 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&h=300&fit=crop', 'category': 'Accessories'},
-                12: {'name': 'Logitech MX Master 3S Mouse', 'price': 12000, 'old_price': 15000, 'rating': 4.9, 'description': ['Ergonomic Design', '8K DPI Sensor', 'Quiet Clicks'], 'image': 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400&h=300&fit=crop', 'category': 'Accessories'},
-                13: {'name': 'Keychron K2 Mechanical Keyboard', 'price': 9500, 'old_price': 11000, 'rating': 4.8, 'description': ['Wireless/Wired', 'Gateron Switches', 'Mac & Windows'], 'image': 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&h=300&fit=crop', 'category': 'Accessories'},
-                14: {'name': 'Anker 737 Power Bank', 'price': 15000, 'old_price': 18000, 'rating': 4.9, 'description': ['24,000mAh', '140W Output', 'Smart Display'], 'image': 'https://images.unsplash.com/photo-1609592426085-4c0c9e2d47c6?w=400&h=300&fit=crop', 'category': 'Accessories'},
-                15: {'name': 'Logitech Z407 Bluetooth Speakers', 'price': 9000, 'old_price': 11000, 'rating': 4.5, 'description': ['80W Peak Power', 'Subwoofer', 'Wireless Control'], 'image': 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400&h=300&fit=crop', 'category': 'Accessories'},
-            }
-            for pid, data in initial_products.items():                
-                p = Product(id=pid, name=data['name'], price=data['price'], old_price=data.get('old_price'), rating=data.get('rating'), image=data['image'], category=data['category'])
-                p.description_list = data.get('description', [])
-                db.session.add(p)
-            db.session.commit()
-            print("Database populated with initial products.")
-
-# Initialize the database when the application starts
-initialize_database()
+        db.session.commit()
+        print("✅ Initialized the database with fresh data.")
 
 @app.route('/admin/reseed-products')
 def reseed_products():
@@ -137,7 +123,7 @@ def reseed_products():
     db.session.query(Product).delete()
     db.session.commit()
     flash('All products have been deleted. Repopulating database...', 'warning')
-    initialize_database() # This will now run the product population logic
+    init_db_command() # This will now run the product population logic
     flash('Product database has been successfully re-seeded.', 'success')
     return redirect(url_for('admin.index'))
 
@@ -150,33 +136,45 @@ def inject_cart_count():
 
 @app.route('/')
 def home():
-    # Group products by category for display
-    all_categories = [cat[0] for cat in db.session.query(Product.category).distinct().order_by(Product.category).all()]
+    # Get search query and category from request args
+    search_query = request.args.get('q')
     selected_category = request.args.get('category')
 
-    categorized_products = {}
+    # Base query
     query = Product.query
 
-    if selected_category:
-        # Filter for a single category
-        if selected_category in all_categories:
-            query = query.filter_by(category=selected_category)
-            categorized_products[selected_category] = query.all()
-    else:
-        # Group all products by category
-        categorized_products = {cat: [] for cat in all_categories}
-        all_products = query.order_by(Product.category).all()
-        for product in all_products:
-            categorized_products[product.category].append(product)
+    # Apply search filter if present
+    if search_query:
+        query = query.filter(Product.name.ilike(f'%{search_query}%'))
+        # When searching, we don't want the category filter from the sidebar to be active
+        selected_category = None
+
+    # Apply category filter if present (and not searching)
+    elif selected_category:
+        query = query.filter_by(category=selected_category)
+
+    # Fetch products from the filtered query
+    products = query.order_by(Product.name).all()
+
+    # Get all distinct categories for the sidebar
+    all_categories = [cat[0] for cat in db.session.query(Product.category).distinct().order_by(Product.category).all()]
+
+    # Group the final list of products by category for display
+    categorized_products = {}
+    if products:
+        result_categories = sorted(list(set(p.category for p in products)))
+        for cat in result_categories:
+            categorized_products[cat] = [p for p in products if p.category == cat]
 
     # For the carousel, just get the first 3 products
     carousel_products = Product.query.limit(3).all()
 
     return render_template('home.html', 
-                           products=carousel_products, # Pass first 3 products for carousel
+                           carousel_products=carousel_products,
                            categories=all_categories, 
                            categorized_products=categorized_products,
-                           selected_category=selected_category)
+                           selected_category=selected_category,
+                           search_query=search_query)
 
 @app.route('/product/<int:product_id>')
 def product_detail(product_id):
@@ -352,6 +350,24 @@ def mpesa_callback():
     data = request.get_json()
     # Logic to update order status in the database based on the callback data.
     return 'OK', 200
+
+@app.route('/contact', methods=['GET', 'POST'])
+def contact():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        category = request.form.get('category')
+        message = request.form.get('message')
+
+        if not name or not email or not category or not message:
+            flash('All fields are required.', 'warning')
+            return redirect(url_for('contact'))
+
+        # Here you can add logic to send an email or save to database
+        # For now, just flash a success message
+        flash(f'Thank you {name}, your {category} message has been sent. We will get back to you at {email}.', 'success')
+        return redirect(url_for('home'))
+    return render_template('contact.html')
 
 # --- Admin Configuration ---
 class SecureModelView(ModelView):

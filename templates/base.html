@@ -19,15 +19,22 @@
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('home') }}">
-                <i class="fas fa-store me-2"></i>
+                <i class="fas fa-laptop-house fa-2x me-2"></i>
                 Tech Accessories Kenya
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav ms-auto d-flex align-items-center">
+                <!-- Search Form -->
+                <form class="d-flex mx-auto my-2 my-lg-0" action="{{ url_for('home') }}" method="get">
+                    <input class="form-control me-2" type="search" name="q" id="search-input" placeholder="Search for products..." aria-label="Search" value="{{ search_query or '' }}">
+                    <button class="btn btn-outline-danger" type="submit">Search</button>
+                </form>
+
+                <div class="navbar-nav ms-lg-3 d-flex align-items-center">
                     <a class="nav-link" href="#">Help Center</a>
+                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#contactModal">Contact Us</a>
                     <a class="nav-link" href="{{ url_for('cart') }}">
                         <i class="fas fa-shopping-cart"></i> Cart
                         {% if cart_item_count > 0 %}
@@ -69,6 +76,20 @@
             {% endif %}
         {% endwith %}
         {% block content %}{% endblock %}
+    </div>
+
+    <!-- Toast for Cart Notifications -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="cartToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="fas fa-shopping-cart me-2"></i>
+                <strong class="me-auto">Cart Updated</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                Item added to cart successfully!
+            </div>
+        </div>
     </div>
 
     <footer class="info-section-wrapper mt-5 py-5">
@@ -126,7 +147,54 @@
                 icon.classList.toggle('fa-moon');
                 icon.classList.toggle('fa-sun');
             });
+
+            // Show toast for cart notifications
+            const alerts = document.querySelectorAll('.alert-info');
+            if (alerts.length > 0) {
+                const toast = new bootstrap.Toast(document.getElementById('cartToast'));
+                toast.show();
+            }
         });
     </script>
+
+    <!-- Contact Modal -->
+    <div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="contactModalLabel">Contact Us</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ url_for('contact') }}" method="post">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Category</label>
+                            <select class="form-control" id="category" name="category" required>
+                                <option value="">Select a category</option>
+                                <option value="General Inquiry">General Inquiry</option>
+                                <option value="Product Issues">Product Issues</option>
+                                <option value="Shipping & Delivery">Shipping & Delivery</option>
+                                <option value="Returns & Refunds">Returns & Refunds</option>
+                                <option value="Technical Support">Technical Support</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Message</label>
+                            <textarea class="form-control" id="message" name="message" rows="3" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Message</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
