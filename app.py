@@ -35,14 +35,14 @@ db = SQLAlchemy(app)
 # Initialize the database if tables don't exist
 def init_database():
     """Initialize the database tables and populate with initial data if they don't exist."""
-    try:
-        # Check if tables exist by trying to query them
-        db.session.execute(db.text('SELECT 1 FROM product LIMIT 1'))
-    except Exception:
-        # Tables don't exist, create them
-        with app.app_context():
+    with app.app_context():
+        try:
+            # Check if tables exist by trying to query them
+            db.session.execute(db.text('SELECT 1 FROM product LIMIT 1'))
+        except Exception:
+            # Tables don't exist, create them
             db.create_all()
-            
+
             # Create admin user
             hashed_password = generate_password_hash('admin')
             admin_user = User(username='admin', password_hash=hashed_password, is_admin=True)
@@ -56,7 +56,7 @@ def init_database():
                 {'name': 'HP Spectre x360', 'price': 145000, 'old_price': 160000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','512GB SSD'], 'image': 'images/hp_spectre_x360.jpg', 'category': 'Laptops'},
                 {'name': 'Lenovo ThinkPad X1 Carbon', 'price': 165000, 'old_price': 180000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/lenovo_thinkpad_x1_carbon.jpg', 'category': 'Laptops'},
                 {'name': 'Asus ROG Zephyrus G14', 'price': 190000, 'old_price': 210000, 'rating': 4.8, 'description': ['AMD Ryzen 9','16GB RAM','1TB SSD'], 'image': 'images/asus_rog_zephyrus_g14.jpg', 'category': 'Laptops'},
-                
+
                 # Desktops
                 {'name': 'Apple iMac 24"', 'price': 180000, 'old_price': 195000, 'rating': 4.8, 'description': ['Apple M1 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_imac_24.jpg', 'category': 'Desktops'},
                 {'name': 'Alienware Aurora R15', 'price': 250000, 'old_price': 280000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','2TB SSD'], 'image': 'images/alienware_aurora_r15.jpg', 'category': 'Desktops'},
@@ -76,12 +76,9 @@ def init_database():
                 p = Product(name=data['name'], price=data['price'], old_price=data.get('old_price'), rating=data.get('rating'), image=data['image'], category=data['category'])
                 p.description_list = data.get('description', [])
                 db.session.add(p)
-            
+
             db.session.commit()
             print("✅ Database initialized with tables and initial data.")
-
-# Call the initialization function
-init_database()
 
 # --- Database Models ---
 class User(db.Model):
@@ -457,6 +454,9 @@ admin = Admin(app, name='Tech Kenya Admin', template_mode='bootstrap4')
 admin.add_view(SecureModelView(User, db.session))
 # Replace the default Product view with our new custom one
 admin.add_view(ProductAdminView(Product, db.session))
+
+# Initialize database on startup
+init_database()
 
 if __name__ == '__main__':
     # Open the web browser automatically
