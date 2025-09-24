@@ -35,12 +35,56 @@
                 <div class="navbar-nav ms-lg-3 d-flex align-items-center">
                     <a class="nav-link" href="#">Help Center</a>
                     <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#contactModal">Contact Us</a>
-                    <a class="nav-link" href="{{ url_for('cart') }}">
-                        <i class="fas fa-shopping-cart"></i> Cart
-                        {% if cart_item_count > 0 %}
-                            <span class="badge rounded-pill bg-danger ms-1">{{ cart_item_count }}</span>
-                        {% endif %}
-                    </a>
+                    <!-- Cart Dropdown -->
+                    <div class="dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="cartDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-shopping-cart"></i> Cart
+                            {% if cart_item_count > 0 %}
+                                <span class="badge rounded-pill bg-danger ms-1">{{ cart_item_count }}</span>
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="cartDropdown" style="min-width: 350px;">
+                            {% if cart_item_count > 0 %}
+                                <li><h6 class="dropdown-header">Cart Items ({{ cart_item_count }})</h6></li>
+                                <li><hr class="dropdown-divider"></li>
+                                {% for item in cart_items %}
+                                <li>
+                                    <div class="dropdown-item d-flex align-items-center">
+                                        <img src="{{ url_for('static', filename=item.image) }}" alt="{{ item.name }}" style="width: 40px; height: 40px; object-fit: cover; margin-right: 10px;" onerror="this.src='{{ url_for('static', filename='images/pc.webp') }}'">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold small">{{ item.name[:30] }}{% if item.name|length > 30 %}...{% endif %}</div>
+                                            <div class="text-muted small">Qty: {{ item.quantity }} × KSh {{ "%.0f"|format(item.price) }}</div>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-bold">KSh {{ "%.0f"|format(item.subtotal) }}</div>
+                                        </div>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <div class="dropdown-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <strong>Total:</strong>
+                                            <strong>KSh {{ "%.0f"|format(cart_total) }}</strong>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-center" href="{{ url_for('cart') }}">
+                                    <i class="fas fa-eye me-2"></i>View Full Cart
+                                </a></li>
+                                <li><a class="dropdown-item text-center btn btn-primary" href="{{ url_for('checkout') }}" style="color: white; margin: 5px;">
+                                    <i class="fas fa-credit-card me-2"></i>Proceed to Checkout
+                                </a></li>
+                            {% else %}
+                                <li><h6 class="dropdown-header">Your cart is empty</h6></li>
+                                <li><a class="dropdown-item text-center" href="{{ url_for('home') }}">
+                                    <i class="fas fa-shopping-bag me-2"></i>Continue Shopping
+                                </a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
                     {% if session.username %}
                         {# This block is for any logged-in user #}
                         {% if session.is_admin %}
@@ -120,7 +164,7 @@
             </div>
             <hr class="my-4">
             <div class="text-center text-muted">
-                <p class="mb-0">&copy; <script>document.write(new Date().getFullYear())</script> Tech Accessories Kenya. All Rights Reserved. | Website built by <a href="https://justkim99.com" target="_blank" rel="noopener noreferrer" class="text-reset">justkim99.com</a></p>
+                <p class="mb-0">&copy; <span id="current-year"></span> Tech Accessories Kenya. All Rights Reserved. | Website built by <a href="https://justkim99.com" target="_blank" rel="noopener noreferrer" class="text-reset">justkim99.com</a></p>
             </div>
         </div>
     </footer>
@@ -147,6 +191,12 @@
                 icon.classList.toggle('fa-moon');
                 icon.classList.toggle('fa-sun');
             });
+
+            // Set current year in footer
+            const currentYearElement = document.getElementById('current-year');
+            if (currentYearElement) {
+                currentYearElement.textContent = new Date().getFullYear();
+            }
 
             // Show toast for cart notifications
             const alerts = document.querySelectorAll('.alert-info');

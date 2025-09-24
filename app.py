@@ -180,7 +180,30 @@ def inject_cart_count():
     cart = session.get('cart', {})
     # Sum the quantities of all items in the cart
     cart_item_count = sum(cart.values())
-    return dict(cart_item_count=cart_item_count)
+
+    # Get cart items for dropdown display
+    cart_items = []
+    total = 0
+    for pid_str, qty in cart.items():
+        pid = int(pid_str)
+        product = Product.query.get(pid)
+        if product:
+            subtotal = product.price * qty
+            total += subtotal
+            cart_items.append({
+                'id': pid,
+                'name': product.name,
+                'price': product.price,
+                'quantity': qty,
+                'subtotal': subtotal,
+                'image': product.web_image_path
+            })
+
+    return dict(
+        cart_item_count=cart_item_count,
+        cart_items=cart_items,
+        cart_total=total
+    )
 
 @app.route('/')
 def home():
