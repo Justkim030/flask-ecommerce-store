@@ -44,6 +44,7 @@ def init_database():
             hashed_password = generate_password_hash('admin')
             admin_user = User(username='admin', password_hash=hashed_password, is_admin=True)
             db.session.add(admin_user)
+            db.session.commit()  # Commit to assign ID to admin_user
 
             # Populate with initial products
             initial_products = [
