@@ -3,17 +3,70 @@
 {% block title %}Checkout - Tech Accessories Kenya{% endblock %}
 
 {% block content %}
-<h2>Checkout</h2>
-<form method="POST" action="{{ url_for('checkout') }}">
-    <div class="mb-3">
-        <label for="phone_number" class="form-label">M-PESA Phone Number</label>
-        {% if session.is_admin %}
-            <input type="text" class="form-control" id="phone_number" name="phone_number" value="{{ admin_phone }}" readonly>
-            <div id="adminHelp" class="form-text">As an admin, your payment number is pre-filled.</div>
-        {% else %}
-            <input type="text" class="form-control" id="phone_number" name="phone_number" placeholder="e.g., 0712345678 or 254712345678" required>
-        {% endif %}
+<div class="row">
+    <div class="col-md-8">
+        <h2 class="mb-4">Checkout</h2>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Shipping Details</h5>
+                <form method="POST" action="{{ url_for('checkout') }}">
+                    <div class="mb-3">
+                        <label for="phone_number" class="form-label">M-PESA Phone Number</label>
+                        {% if session.is_admin %}
+                            <input type="text" class="form-control" id="phone_number" name="phone_number" value="{{ admin_phone }}" readonly>
+                            <div id="adminHelp" class="form-text">As an admin, your payment number is pre-filled.</div>
+                        {% else %}
+                            <input type="text" class="form-control" id="phone_number" name="phone_number" placeholder="e.g., 0712345678 or 254712345678" required>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="county" class="form-label">County</label>
+                        <select class="form-select" id="county" name="county" required>
+                            <option value="">Select County</option>
+                            <option value="Nairobi">Nairobi</option>
+                            <option value="Mombasa">Mombasa</option>
+                            <option value="Kisumu">Kisumu</option>
+                            <option value="Nakuru">Nakuru</option>
+                            <option value="Kiambu">Kiambu</option>
+                            <option value="Uasin Gishu">Uasin Gishu</option>
+                            <option value="Machakos">Machakos</option>
+                            <option value="Kakamega">Kakamega</option>
+                            <option value="Meru">Meru</option>
+                            <option value="Nyeri">Nyeri</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="city" class="form-label">City/Town</label>
+                        <input type="text" class="form-control" id="city" name="city" placeholder="e.g., Nairobi" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="shipping_address" class="form-label">Shipping Address</label>
+                        <textarea class="form-control" id="shipping_address" name="shipping_address" rows="3" placeholder="Full shipping address" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-lg">Pay with M-PESA</button>
+                </form>
+            </div>
+        </div>
     </div>
-    <button type="submit" class="btn btn-success">Pay with M-PESA</button>
-</form>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Order Summary</h5>
+                {% set total = 0 %}
+                {% for item in cart_items %}
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>{{ item.name }} (x{{ item.quantity }})</span>
+                        <span>KSh {{ "%.0f"|format(item.subtotal) }}</span>
+                    </div>
+                    {% set total = total + item.subtotal %}
+                {% endfor %}
+                <hr>
+                <div class="d-flex justify-content-between fw-bold">
+                    <span>Total:</span>
+                    <span>KSh {{ "%.0f"|format(total) }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

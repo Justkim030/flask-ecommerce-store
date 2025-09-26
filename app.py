@@ -9,7 +9,7 @@ from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv
 import webbrowser
 from threading import Timer
-from mpesa_handler import initiate_stk_push # Import the M-PESA function
+from paystack_handler import initiate_mpesa_charge # Import the Paystack M-PESA function
 import os
 
 load_dotenv() # Load environment variables from .env file
@@ -36,13 +36,13 @@ db = SQLAlchemy(app)
 def init_database():
     """Initialize the database tables and populate with initial data if they don't exist."""
     with app.app_context():
+        db.create_all()  # Always ensure all tables exist
+
         try:
             # Check if tables exist by trying to query them
             db.session.execute(db.text('SELECT 1 FROM product LIMIT 1'))
         except Exception:
-            # Tables don't exist, create them
-            db.create_all()
-
+            # Tables don't exist, create them (redundant now, but populate)
             # Create admin user
             hashed_password = generate_password_hash('admin')
             admin_user = User(username='admin', password_hash=hashed_password, is_admin=True)
@@ -76,6 +76,19 @@ def init_database():
                 p = Product(name=data['name'], price=data['price'], old_price=data.get('old_price'), rating=data.get('rating'), image=data['image'], category=data['category'])
                 p.description_list = data.get('description', [])
                 db.session.add(p)
+
+            # Create a test order for the admin user with sample shipping details
+            test_order = Order(
+                user_id=admin_user.id,
+                reference='TEST_ORDER_123',
+                amount=150000,
+                phone_number='0712345678',
+                county='Nairobi',  # Sample shipping county
+                city='Nairobi',  # Sample shipping city
+                shipping_address='Test Street, Nairobi',  # Sample shipping address
+                status='success'
+            )
+            db.session.add(test_order)
 
             db.session.commit()
             print("✅ Database initialized with tables and initial data.")
@@ -112,6 +125,33 @@ class Product(db.Model):
     @description_list.setter
     def description_list(self, value_list):
         self.description = ','.join(value_list)
+
+class Order(db.Model):
+    """
+    Represents an order placed by a user in the e-commerce system.
+
+    Attributes:
+        id: Unique identifier for the order.
+        user_id: Foreign key referencing the User who placed the order.
+        reference: Unique payment reference (e.g., from Paystack).
+        amount: Total amount of the order in KSh.
+        phone_number: M-PESA phone number used for payment.
+        county: County for shipping (e.g., Nairobi, Mombasa).
+        city: City/town for shipping (e.g., Nairobi, Kisumu).
+        shipping_address: Full shipping address details.
+        status: Order status ('pending', 'success', 'failed').
+        created_at: Timestamp when the order was created.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    reference = db.Column(db.String(100), unique=True, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    phone_number = db.Column(db.String(20), nullable=False)
+    county = db.Column(db.String(100), nullable=False)  # Shipping county (e.g., Nairobi)
+    city = db.Column(db.String(100), nullable=False)  # Shipping city/town
+    shipping_address = db.Column(db.String(500), nullable=False)  # Full shipping address
+    status = db.Column(db.String(50), default='pending')  # Order status: pending, success, failed
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 @app.cli.command('init-db')
 def init_db_command():
@@ -374,10 +414,24 @@ def cart():
 
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
+    """
+    Handle the checkout process for users to complete their orders.
+
+    GET: Display the checkout form with shipping details fields.
+    POST: Process the checkout form, validate shipping details, initiate M-PESA payment,
+          and create an order record with shipping information.
+
+    Shipping Details Collected:
+    - county: User's county (e.g., Nairobi, Mombasa) for regional shipping
+    - city: User's city/town within the county
+    - shipping_address: Full street address for delivery
+
+    The shipping details are stored in the Order model and displayed in the orders page.
+    """
     if 'username' not in session:
         flash('Please login to checkout.', 'warning')
         return redirect(url_for('login'))
-    
+
     if not session.get('cart'):
         flash('Your cart is empty. Add items before checking out.', 'warning')
         return redirect(url_for('home'))
@@ -386,7 +440,10 @@ def checkout():
 
     if request.method == 'POST':
         phone_number = request.form.get('phone_number')
-        
+        county = request.form.get('county')  # Shipping county
+        city = request.form.get('city')  # Shipping city/town
+        shipping_address = request.form.get('shipping_address')  # Full shipping address
+
         # 1. Calculate total amount from the cart
         cart = session.get('cart', {})
         total = 0
@@ -404,11 +461,51 @@ def checkout():
             flash('Cannot checkout with an empty cart.', 'warning')
             return redirect(url_for('cart'))
 
-        # 2. Initiate the STK Push (fire and forget)
-        initiate_stk_push(phone_number=phone_number, amount=total)
+        # Validate that all shipping details are provided
+        if not county or not city or not shipping_address:
+            flash('Please provide shipping details.', 'warning')
+            return render_template('checkout.html', admin_phone=admin_phone)
 
-        # 3. Always flash a success message and clear the cart, regardless of the API response.
-        flash(f'A payment request has been sent to {phone_number}. Please enter your M-PESA PIN to complete the transaction.', 'success')
+        # 2. Initiate the M-Pesa charge via Paystack (fire and forget)
+        email = "customer@anorld.com"  # Default email, can be updated to get from user
+        result = initiate_mpesa_charge(phone_number=phone_number, amount=total, email=email)
+        if "error" in result:
+            # Still create order as pending for tracking, even if payment fails
+            reference = f"ANORLD_{int(total)}_{phone_number.replace('+', '').replace(' ', '')}"
+            user = User.query.filter_by(username=session['username']).first()
+            order = Order(
+                user_id=user.id,
+                reference=reference,
+                amount=total,
+                phone_number=phone_number,
+                county=county,  # Store shipping county
+                city=city,  # Store shipping city
+                shipping_address=shipping_address,  # Store full shipping address
+                status='failed'
+            )
+            db.session.add(order)
+            db.session.commit()
+            flash(f'Payment initiation failed: {result["error"]}. Order {reference} created for tracking.', 'danger')
+            return render_template('checkout.html', admin_phone=admin_phone)
+
+        # Success: Create pending order with Paystack reference and shipping details
+        reference = result['data']['reference']
+        user = User.query.filter_by(username=session['username']).first()
+        order = Order(
+            user_id=user.id,
+            reference=reference,
+            amount=total,
+            phone_number=phone_number,
+            county=county,  # Store shipping county
+            city=city,  # Store shipping city
+            shipping_address=shipping_address,  # Store full shipping address
+            status='pending'
+        )
+        db.session.add(order)
+        db.session.commit()
+
+        # 3. Flash success and clear cart
+        flash(f'A payment request has been sent to {phone_number}. Please enter your M-PESA PIN to complete the transaction. Order: {reference}', 'success')
         session.pop('cart', None)
 
         return redirect(url_for('home'))
@@ -421,6 +518,47 @@ def mpesa_callback():
     data = request.get_json()
     # Logic to update order status in the database based on the callback data.
     return 'OK', 200
+
+@app.route('/paystack_webhook', methods=['POST'])
+def paystack_webhook():
+    # Paystack sends webhooks for payment events
+    data = request.get_json()
+    event = data.get('event')
+    if event == 'charge.success':
+        # Payment was successful
+        reference = data.get('data', {}).get('reference')
+        if reference:
+            order = Order.query.filter_by(reference=reference).first()
+            if order:
+                order.status = 'success'
+                db.session.commit()
+                print(f"Order {reference} marked as success.")
+            else:
+                print(f"Order with reference {reference} not found.")
+        print(f"Payment successful: {data}")
+        # Here you can send email, etc.
+    elif event == 'charge.failed':
+        reference = data.get('data', {}).get('reference')
+        if reference:
+            order = Order.query.filter_by(reference=reference).first()
+            if order:
+                order.status = 'failed'
+                db.session.commit()
+                print(f"Order {reference} marked as failed.")
+            else:
+                print(f"Order with reference {reference} not found.")
+        print(f"Payment failed: {data}")
+    return 'OK', 200
+
+@app.route('/orders')
+def orders():
+    if 'username' not in session:
+        flash('Please login to view your orders.', 'warning')
+        return redirect(url_for('login'))
+
+    user = User.query.filter_by(username=session['username']).first()
+    user_orders = Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).all()
+    return render_template('orders.html', orders=user_orders)
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():

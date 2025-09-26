@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}My Orders - Tech Accessories Kenya{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">My Orders</h1>
+        {% if orders %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Order Reference</th>
+                            <th>Amount (KSh)</th>
+                            <th>Phone Number</th>
+                            <th>County</th>
+                            <th>City</th>
+                            <th>Shipping Address</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>{{ order.reference }}</td>
+                            <td>{{ "%.0f"|format(order.amount) }}</td>
+                            <td>{{ order.phone_number }}</td>
+                            <td>{{ order.county }}</td>
+                            <td>{{ order.city }}</td>
+                            <td>{{ order.shipping_address }}</td>
+                            <td>
+                                {% if order.status == 'success' %}
+                                    <span class="badge bg-success">Success</span>
+                                {% elif order.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% elif order.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ order.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                You haven't placed any orders yet. <a href="{{ url_for('home') }}" class="alert-link">Start shopping</a> to place your first order!
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
