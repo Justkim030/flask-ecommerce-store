@@ -38,11 +38,8 @@ def init_database():
     with app.app_context():
         db.create_all()  # Always ensure all tables exist
 
-        try:
-            # Check if tables exist by trying to query them
-            db.session.execute(db.text('SELECT 1 FROM product LIMIT 1'))
-        except Exception:
-            # Tables don't exist, create them (redundant now, but populate)
+        # Check if products exist; populate if none
+        if Product.query.count() == 0:
             # Create admin user
             hashed_password = generate_password_hash('admin')
             admin_user = User(username='admin', password_hash=hashed_password, is_admin=True)
