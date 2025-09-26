@@ -1,0 +1,4 @@
+- [x] Modify paystack_handler.py to check PAYSTACK_SECRET_KEY inside the function instead of at import time
+- [x] Ensure the function returns an error if the key is not set
+- [x] Skipped testing, provided deployment instructions
+- [x] Instruct user to set PAYSTACK_SECRET_KEY in Render environment variables

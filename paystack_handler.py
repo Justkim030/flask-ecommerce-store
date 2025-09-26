@@ -4,15 +4,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Paystack with secret key
-paystack_secret_key = os.environ.get('PAYSTACK_SECRET_KEY')
-if not paystack_secret_key:
-    raise ValueError("PAYSTACK_SECRET_KEY not set in environment variables")
-
 def initiate_mpesa_charge(phone_number, amount, email="customer@example.com", reference=None):
     """
     Initiates an M-Pesa charge via Paystack.
     """
+    paystack_secret_key = os.environ.get('PAYSTACK_SECRET_KEY')
     if not paystack_secret_key:
         return {"error": "Paystack secret key not configured."}
 
