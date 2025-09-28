@@ -7,6 +7,7 @@ from flask_admin.form import ImageUploadField
 from flask_admin.contrib.sqla import ModelView
 from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv
+from flask_mail import Mail, Message
 import webbrowser
 from threading import Timer
 from paystack_handler import initiate_mpesa_charge # Import the Paystack M-PESA function
@@ -32,6 +33,16 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 Session(app)
 db = SQLAlchemy(app)
 
+# --- Mail Configuration ---
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True').lower() == 'true'
+app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'False').lower() == 'true'
+
+mail = Mail(app)
+
 # Initialize the database if tables don't exist
 def init_database():
     """Initialize the database tables and populate with initial data if they don't exist."""
@@ -42,32 +53,32 @@ def init_database():
         if Product.query.count() == 0:
             # Create admin user
             hashed_password = generate_password_hash('admin')
-            admin_user = User(username='admin', password_hash=hashed_password, is_admin=True)
+            admin_user = User(username='admin', email='admin@example.com', password_hash=hashed_password, is_admin=True)
             db.session.add(admin_user)
             db.session.commit()  # Commit to assign ID to admin_user
 
             # Populate with initial products
             initial_products = [
                 # Laptops
-                {'name': 'Apple MacBook Air M2', 'price': 150000, 'old_price': 165000, 'rating': 4.9, 'description': ['Apple M2 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_macbook_air_m2.jpg', 'category': 'Laptops'},
-                {'name': 'Dell XPS 15', 'price': 180000, 'old_price': 200000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','1TB SSD'], 'image': 'images/dell_xps_15.jpg', 'category': 'Laptops'},
-                {'name': 'HP Spectre x360', 'price': 145000, 'old_price': 160000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','512GB SSD'], 'image': 'images/hp_spectre_x360.jpg', 'category': 'Laptops'},
-                {'name': 'Lenovo ThinkPad X1 Carbon', 'price': 165000, 'old_price': 180000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/lenovo_thinkpad_x1_carbon.jpg', 'category': 'Laptops'},
-                {'name': 'Asus ROG Zephyrus G14', 'price': 190000, 'old_price': 210000, 'rating': 4.8, 'description': ['AMD Ryzen 9','16GB RAM','1TB SSD'], 'image': 'images/asus_rog_zephyrus_g14.jpg', 'category': 'Laptops'},
+                {'name': 'Apple MacBook Air M2', 'price': 1500, 'old_price': 1650, 'rating': 4.9, 'description': ['Apple M2 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_macbook_air_m2.jpg', 'category': 'Laptops'},
+                {'name': 'Dell XPS 15', 'price': 18000, 'old_price': 20000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','1TB SSD'], 'image': 'images/dell_xps_15.jpg', 'category': 'Laptops'},
+                {'name': 'HP Spectre x360', 'price': 14500, 'old_price': 160000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','512GB SSD'], 'image': 'images/hp_spectre_x360.jpg', 'category': 'Laptops'},
+                {'name': 'Lenovo ThinkPad X1 Carbon', 'price': 16500, 'old_price': 18000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/lenovo_thinkpad_x1_carbon.jpg', 'category': 'Laptops'},
+                {'name': 'Asus ROG Zephyrus G14', 'price': 19000, 'old_price': 21000, 'rating': 4.8, 'description': ['AMD Ryzen 9','16GB RAM','1TB SSD'], 'image': 'images/asus_rog_zephyrus_g14.jpg', 'category': 'Laptops'},
 
                 # Desktops
-                {'name': 'Apple iMac 24"', 'price': 180000, 'old_price': 195000, 'rating': 4.8, 'description': ['Apple M1 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_imac_24.jpg', 'category': 'Desktops'},
-                {'name': 'Alienware Aurora R15', 'price': 250000, 'old_price': 280000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','2TB SSD'], 'image': 'images/alienware_aurora_r15.jpg', 'category': 'Desktops'},
-                {'name': 'HP Envy All-in-One 34"', 'price': 220000, 'old_price': 240000, 'rating': 4.8, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/hp_envy_all-in-one_34.jpg', 'category': 'Desktops'},
-                {'name': 'Corsair Vengeance i7400', 'price': 280000, 'old_price': 310000, 'rating': 4.9, 'description': ['Intel Core i7','32GB DDR5','2TB NVMe'], 'image': 'images/gaming_pc_pro.jpg', 'category': 'Desktops'},
-                {'name': 'HP Pavilion Gaming Desktop', 'price': 98000, 'old_price': 110000, 'rating': 4.6, 'description': ['Intel Core i5','16GB RAM','512GB SSD'], 'image': 'images/hp_pavilion_gaming_desktop.jpg', 'category': 'Desktops'},
+                {'name': 'Apple iMac 24"', 'price': 18000, 'old_price': 19500, 'rating': 4.8, 'description': ['Apple M1 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_imac_24.jpg', 'category': 'Desktops'},
+                {'name': 'Alienware Aurora R15', 'price': 25000, 'old_price': 28000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','2TB SSD'], 'image': 'images/alienware_aurora_r15.jpg', 'category': 'Desktops'},
+                {'name': 'HP Envy All-in-One 34"', 'price': 22000, 'old_price': 24000, 'rating': 4.8, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/hp_envy_all-in-one_34.jpg', 'category': 'Desktops'},
+                {'name': 'Corsair Vengeance i7400', 'price': 28000, 'old_price': 31000, 'rating': 4.9, 'description': ['Intel Core i7','32GB DDR5','2TB NVMe'], 'image': 'images/gaming_pc_pro.jpg', 'category': 'Desktops'},
+                {'name': 'HP Pavilion Gaming Desktop', 'price': 9800, 'old_price': 11000, 'rating': 4.6, 'description': ['Intel Core i5','16GB RAM','512GB SSD'], 'image': 'images/hp_pavilion_gaming_desktop.jpg', 'category': 'Desktops'},
 
                 # Accessories
-                {'name': 'Sony WH-1000XM5 Headphones', 'price': 45000, 'old_price': 52000, 'rating': 4.9, 'description': ['Noise Cancelling','Wireless','30-Hour Battery'], 'image': 'images/sony_wh-1000xm5_headphones.jpg', 'category': 'Accessories'},
-                {'name': 'Logitech MX Master 3S Mouse', 'price': 12000, 'old_price': 15000, 'rating': 4.9, 'description': ['Ergonomic Design','8K DPI Sensor','Quiet Clicks'], 'image': 'images/logitech_mx_master_3s_mouse.jpg', 'category': 'Accessories'},
-                {'name': 'Keychron K2 Mechanical Keyboard', 'price': 9500, 'old_price': 11000, 'rating': 4.8, 'description': ['Wireless/Wired','Gateron Switches','Mac & Windows'], 'image': 'images/keychron_k2_mechanical_keyboard.jpg', 'category': 'Accessories'},
-                {'name': 'Anker 737 Power Bank', 'price': 15000, 'old_price': 18000, 'rating': 4.9, 'description': ['24,000mAh','140W Output','Smart Display'], 'image': 'images/anker_737_power_bank.jpg', 'category': 'Accessories'},
-                {'name': 'Logitech C920 HD Pro Webcam', 'price': 8000, 'old_price': 9500, 'rating': 4.7, 'description': ['1080p Full HD','Stereo Audio','Light Correction'], 'image': 'images/logitech_c920_hd_pro_webcam.jpg', 'category': 'Accessories'},
+                {'name': 'Sony WH-1000XM5 Headphones', 'price': 4500, 'old_price': 5200, 'rating': 4.9, 'description': ['Noise Cancelling','Wireless','30-Hour Battery'], 'image': 'images/sony_wh-1000xm5_headphones.jpg', 'category': 'Accessories'},
+                {'name': 'Logitech MX Master 3S Mouse', 'price': 1200, 'old_price': 1500, 'rating': 4.9, 'description': ['Ergonomic Design','8K DPI Sensor','Quiet Clicks'], 'image': 'images/logitech_mx_master_3s_mouse.jpg', 'category': 'Accessories'},
+                {'name': 'Keychron K2 Mechanical Keyboard', 'price': 950, 'old_price': 1100, 'rating': 4.8, 'description': ['Wireless/Wired','Gateron Switches','Mac & Windows'], 'image': 'images/keychron_k2_mechanical_keyboard.jpg', 'category': 'Accessories'},
+                {'name': 'Anker 737 Power Bank', 'price': 1500, 'old_price': 1800, 'rating': 4.9, 'description': ['24,000mAh','140W Output','Smart Display'], 'image': 'images/anker_737_power_bank.jpg', 'category': 'Accessories'},
+                {'name': 'Logitech C920 HD Pro Webcam', 'price': 800, 'old_price': 950, 'rating': 4.7, 'description': ['1080p Full HD','Stereo Audio','Light Correction'], 'image': 'images/logitech_c920_hd_pro_webcam.jpg', 'category': 'Accessories'},
             ]
 
             for data in initial_products:
@@ -95,6 +106,7 @@ def init_database():
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
@@ -147,9 +159,56 @@ class Order(db.Model):
     phone_number = db.Column(db.String(20), nullable=False)
     county = db.Column(db.String(100), nullable=False)  # Shipping county (e.g., Nairobi)
     city = db.Column(db.String(100), nullable=False)  # Shipping city/town
-    shipping_address = db.Column(db.String(500), nullable=False)  # Full shipping address
+    shipping_address = db.Column(db.String(500), nullable=False)  # Full shipping address (e.g.,434, 5th avenue, Nairobi)
     status = db.Column(db.String(50), default='pending')  # Order status: pending, success, failed
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+# --- Email Sending Functions ---
+def send_welcome_email(email, username):
+    """Send a welcome email to a newly registered user."""
+    msg = Message(
+        subject='Welcome to ANORLD!',
+        sender=app.config['MAIL_USERNAME'],
+        recipients=[email]
+    )
+    msg.body = f"""
+Hello {username},
+
+Welcome to ANORLD! Thank you for registering with us.
+
+You can now log in to your account and start shopping for the best tech products.
+
+Best regards,
+The ANORLD Team
+"""
+    try:
+        mail.send(msg)
+        print(f"Welcome email sent to {email}")
+    except Exception as e:
+        print(f"Failed to send welcome email to {email}: {e}")
+
+def send_login_notification(email, username):
+    """Send a login notification email to the user."""
+    msg = Message(
+        subject='Login Notification - ANORLD',
+        sender=app.config['MAIL_USERNAME'],
+        recipients=[email]
+    )
+    msg.body = f"""
+Hello {username},
+
+This is a notification that you have successfully logged in to your ANORLD account.
+
+If this was not you, please contact our support team immediately.
+
+Best regards,
+The ANORLD Team
+"""
+    try:
+        mail.send(msg)
+        print(f"Login notification sent to {email}")
+    except Exception as e:
+        print(f"Failed to send login notification to {email}: {e}")
 
 @app.cli.command('init-db')
 def init_db_command():
@@ -160,7 +219,7 @@ def init_db_command():
 
         # Create admin user
         hashed_password = generate_password_hash('admin')
-        admin_user = User(username='admin', password_hash=hashed_password, is_admin=True)
+        admin_user = User(username='admin', email='admin@example.com', password_hash=hashed_password, is_admin=True)
         db.session.add(admin_user)
 
         # This list uses local image paths to guarantee they load.
@@ -299,20 +358,32 @@ def product_detail(product_id):
 def register():
     if request.method == 'POST':
         username = request.form.get('username')
+        email = request.form.get('email')
         password = request.form.get('password')
 
-        if not username or not password:
-            flash('Username and password are required.', 'warning')
+        if not username or not email or not password:
+            flash('Username, email, and password are required.', 'warning')
             return redirect(url_for('register'))
-        
+
+        if '@' not in email:
+            flash('Please enter a valid email address.', 'warning')
+            return redirect(url_for('register'))
+
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             flash('Username already exists', 'warning')
             return redirect(url_for('register'))
 
-        new_user = User(username=username, password_hash=generate_password_hash(password))
+        existing_email = User.query.filter_by(email=email).first()
+        if existing_email:
+            flash('Email already exists', 'warning')
+            return redirect(url_for('register'))
+
+        new_user = User(username=username, email=email, password_hash=generate_password_hash(password))
         db.session.add(new_user)
         db.session.commit()
+        # Send welcome email
+        send_welcome_email(new_user.email, new_user.username)
         flash('Registration successful. Please login.', 'success')
         return redirect(url_for('login'))
     return render_template('register.html')
@@ -328,6 +399,8 @@ def login():
             session['username'] = username
             session['is_admin'] = user.is_admin
             flash('Login successful', 'success')
+            # Send login notification email
+            send_login_notification(user.email, user.username)
             return redirect(url_for('home'))
         else:
             flash('Invalid credentials', 'danger')
