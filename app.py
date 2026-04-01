@@ -683,6 +683,7 @@ class ProductAdminView(SecureModelView):
     }
 
 admin = Admin(app, name='Tech Kenya Admin', template_mode='bootstrap4')
+admin = Admin(app, name='Tech Kenya Admin')
 admin.add_view(SecureModelView(User, db.session))
 # Replace the default Product view with our new custom one
 admin.add_view(ProductAdminView(Product, db.session))
@@ -691,6 +692,8 @@ admin.add_view(ProductAdminView(Product, db.session))
 init_database()
 
 if __name__ == '__main__':
+    # Initialize database on startup for local development
+    init_database()
     # Open the web browser automatically
     def open_browser():
         webbrowser.open_new('http://127.0.0.1:5000/')
