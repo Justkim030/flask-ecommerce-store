@@ -682,14 +682,16 @@ class ProductAdminView(SecureModelView):
         }
     }
 
-admin = Admin(app, name='Tech Kenya Admin', template_mode='bootstrap4')
+# Note: Removed 'template_mode' to maintain compatibility with older Flask-Admin versions
+admin = Admin(app, name='Tech Kenya Admin')
 admin.add_view(SecureModelView(User, db.session))
 # Replace the default Product view with our new custom one
 admin.add_view(ProductAdminView(Product, db.session))
 
+# Initialize database on startup
+init_database()
+
 if __name__ == '__main__':
-    # Initialize database on startup for local development
-    init_database()
     # Open the web browser automatically
     def open_browser():
         webbrowser.open_new('http://127.0.0.1:5000/')
@@ -697,4 +699,5 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
         # Open browser only on the first run, not on reloads
         Timer(1, open_browser).start()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)
