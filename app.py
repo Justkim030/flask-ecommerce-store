@@ -700,4 +700,4 @@ if __name__ == '__main__':
         # Open browser only on the first run, not on reloads
         Timer(1, open_browser).start()
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    app.run(debug=False, host='0.0.0.0', port=port)
