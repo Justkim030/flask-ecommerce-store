@@ -167,19 +167,19 @@ class Order(db.Model):
 def send_welcome_email(email, username):
     """Send a welcome email to a newly registered user."""
     msg = Message(
-        subject='Welcome to ANORLD!',
+        subject='Welcome to Tech Kenya Accessories!',
         sender=app.config['MAIL_USERNAME'],
         recipients=[email]
     )
     msg.body = f"""
 Hello {username},
 
-Welcome to ANORLD! Thank you for registering with us.
+Welcome to Tech Kenya Accessories! Thank you for registering with us.
 
 You can now log in to your account and start shopping for the best tech products.
 
 Best regards,
-The ANORLD Team
+The Tech Kenya Team
 """
     try:
         mail.send(msg)
@@ -190,19 +190,19 @@ The ANORLD Team
 def send_login_notification(email, username):
     """Send a login notification email to the user."""
     msg = Message(
-        subject='Login Notification - ANORLD',
+        subject='Login Notification - Tech Kenya Accessories',
         sender=app.config['MAIL_USERNAME'],
         recipients=[email]
     )
     msg.body = f"""
 Hello {username},
 
-This is a notification that you have successfully logged in to your ANORLD account.
+This is a notification that you have successfully logged in to your Tech Kenya account.
 
 If this was not you, please contact our support team immediately.
 
 Best regards,
-The ANORLD Team
+The Tech Kenya Team
 """
     try:
         mail.send(msg)
@@ -699,5 +699,5 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
         # Open browser only on the first run, not on reloads
         Timer(1, open_browser).start()
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 10000))
     app.run(debug=False, host='0.0.0.0', port=port)
