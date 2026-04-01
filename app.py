@@ -682,7 +682,7 @@ class ProductAdminView(SecureModelView):
         }
     }
 
-admin = Admin(app, name='Tech Kenya Admin')
+admin = Admin(app, name='Tech Kenya Admin', template_mode='bootstrap4')
 admin.add_view(SecureModelView(User, db.session))
 # Replace the default Product view with our new custom one
 admin.add_view(ProductAdminView(Product, db.session))
