@@ -10,6 +10,7 @@
             <div class="card-body">
                 <h5 class="card-title">Shipping Details</h5>
                 <form method="POST" action="{{ url_for('checkout') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="phone_number" class="form-label">M-PESA Phone Number</label>
                         {% if session.is_admin %}

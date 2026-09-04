@@ -22,6 +22,7 @@
             <td>KSh {{ "%.2f"|format(item.price) }}</td>
             <td>
                 <form action="{{ url_for('update_cart', product_id=item.id) }}" method="post" class="d-inline-flex">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control form-control-sm" style="width: 75px;">
                     <button type="submit" class="btn btn-sm btn-outline-primary ms-2" title="Update quantity">
                         <i class="fas fa-sync-alt"></i>

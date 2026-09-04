@@ -1,26 +1,49 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_admin import Admin
 from flask_admin.form import ImageUploadField
 from flask_admin.contrib.sqla import ModelView
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv
 from flask_mail import Mail, Message
+from functools import wraps
+from paystack_handler import initiate_mpesa_charge
+import hmac
+import hashlib
+import os
+import re
 import webbrowser
 from threading import Timer
-from paystack_handler import initiate_mpesa_charge # Import the Paystack M-PESA function
-import os
 
-load_dotenv() # Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'a-default-fallback-secret-key-for-dev')
-app.config['SESSION_TYPE'] = 'filesystem'
+
+# --- Security: Secret Key ---
+# In production, require SECRET_KEY to be set. Only fall back to a default in development.
+SECRET_KEY = os.environ.get('SECRET_KEY')
+IS_PRODUCTION = os.environ.get('FLASK_ENV', 'production') == 'production'
+if not SECRET_KEY:
+    if IS_PRODUCTION:
+        raise RuntimeError("SECRET_KEY environment variable must be set in production.")
+    SECRET_KEY = 'dev-only-insecure-secret-key'
+app.secret_key = SECRET_KEY
+
+# --- Security: Cookies ---
+app.config.update(
+    SESSION_TYPE='filesystem',
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=IS_PRODUCTION,
+)
+
+# --- CSRF Protection ---
+csrf = CSRFProtect(app)
 
 # --- Database Configuration ---
-# Use PostgreSQL in production (on Render) and SQLite for local development
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -43,42 +66,73 @@ app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'False').lower() == 
 
 mail = Mail(app)
 
+# --- Validation helpers ---
+EMAIL_REGEX = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
+PHONE_REGEX = re.compile(r"^\+?[0-9]{9,15}$")
+
+def is_valid_email(email: str) -> bool:
+    return bool(email and EMAIL_REGEX.match(email))
+
+def is_valid_phone(phone: str) -> bool:
+    return bool(phone and PHONE_REGEX.match(phone))
+
+def is_strong_password(password: str) -> bool:
+    """Minimum 8 chars, at least one letter and one number."""
+    if not password or len(password) < 8:
+        return False
+    return bool(re.search(r"[A-Za-z]", password) and re.search(r"[0-9]", password))
+
+# --- Auth Decorators ---
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if 'username' not in session:
+            flash('Please login to continue.', 'warning')
+            return redirect(url_for('login', next=request.url))
+        return view(*args, **kwargs)
+    return wrapped
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get('is_admin'):
+            abort(403)
+        return view(*args, **kwargs)
+    return wrapped
+
+# --- CSRF token in templates ---
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf)
+
 # Initialize the database if tables don't exist
 def init_database():
     """Initialize the database tables and populate with initial data if they don't exist."""
     with app.app_context():
-        db.create_all()  # Always ensure all tables exist
+        db.create_all()
 
-        # Check if products exist; populate if none
         if Product.query.count() == 0:
-            # Create admin user
             hashed_password = generate_password_hash('admin')
             admin_user = User(username='admin', email='admin@example.com', password_hash=hashed_password, is_admin=True)
             db.session.add(admin_user)
-            db.session.commit()  # Commit to assign ID to admin_user
+            db.session.commit()
 
-            # Populate with initial products
             initial_products = [
-                # Laptops
-                {'name': 'Apple MacBook Air M2', 'price': 1500, 'old_price': 1650, 'rating': 4.9, 'description': ['Apple M2 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_macbook_air_m2.jpg', 'category': 'Laptops'},
-                {'name': 'Dell XPS 15', 'price': 18000, 'old_price': 20000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','1TB SSD'], 'image': 'images/dell_xps_15.jpg', 'category': 'Laptops'},
-                {'name': 'HP Spectre x360', 'price': 14500, 'old_price': 160000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','512GB SSD'], 'image': 'images/hp_spectre_x360.jpg', 'category': 'Laptops'},
-                {'name': 'Lenovo ThinkPad X1 Carbon', 'price': 16500, 'old_price': 18000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/lenovo_thinkpad_x1_carbon.jpg', 'category': 'Laptops'},
-                {'name': 'Asus ROG Zephyrus G14', 'price': 19000, 'old_price': 21000, 'rating': 4.8, 'description': ['AMD Ryzen 9','16GB RAM','1TB SSD'], 'image': 'images/asus_rog_zephyrus_g14.jpg', 'category': 'Laptops'},
-
-                # Desktops
-                {'name': 'Apple iMac 24"', 'price': 18000, 'old_price': 19500, 'rating': 4.8, 'description': ['Apple M1 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_imac_24.jpg', 'category': 'Desktops'},
-                {'name': 'Alienware Aurora R15', 'price': 25000, 'old_price': 28000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','2TB SSD'], 'image': 'images/alienware_aurora_r15.jpg', 'category': 'Desktops'},
-                {'name': 'HP Envy All-in-One 34"', 'price': 22000, 'old_price': 24000, 'rating': 4.8, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/hp_envy_all-in-one_34.jpg', 'category': 'Desktops'},
-                {'name': 'Corsair Vengeance i7400', 'price': 28000, 'old_price': 31000, 'rating': 4.9, 'description': ['Intel Core i7','32GB DDR5','2TB NVMe'], 'image': 'images/gaming_pc_pro.jpg', 'category': 'Desktops'},
-                {'name': 'HP Pavilion Gaming Desktop', 'price': 9800, 'old_price': 11000, 'rating': 4.6, 'description': ['Intel Core i5','16GB RAM','512GB SSD'], 'image': 'images/hp_pavilion_gaming_desktop.jpg', 'category': 'Desktops'},
-
-                # Accessories
-                {'name': 'Sony WH-1000XM5 Headphones', 'price': 4500, 'old_price': 5200, 'rating': 4.9, 'description': ['Noise Cancelling','Wireless','30-Hour Battery'], 'image': 'images/sony_wh-1000xm5_headphones.jpg', 'category': 'Accessories'},
-                {'name': 'Logitech MX Master 3S Mouse', 'price': 1200, 'old_price': 1500, 'rating': 4.9, 'description': ['Ergonomic Design','8K DPI Sensor','Quiet Clicks'], 'image': 'images/logitech_mx_master_3s_mouse.jpg', 'category': 'Accessories'},
-                {'name': 'Keychron K2 Mechanical Keyboard', 'price': 950, 'old_price': 1100, 'rating': 4.8, 'description': ['Wireless/Wired','Gateron Switches','Mac & Windows'], 'image': 'images/keychron_k2_mechanical_keyboard.jpg', 'category': 'Accessories'},
-                {'name': 'Anker 737 Power Bank', 'price': 1500, 'old_price': 1800, 'rating': 4.9, 'description': ['24,000mAh','140W Output','Smart Display'], 'image': 'images/anker_737_power_bank.jpg', 'category': 'Accessories'},
-                {'name': 'Logitech C920 HD Pro Webcam', 'price': 800, 'old_price': 950, 'rating': 4.7, 'description': ['1080p Full HD','Stereo Audio','Light Correction'], 'image': 'images/logitech_c920_hd_pro_webcam.jpg', 'category': 'Accessories'},
+                {'name': 'Apple MacBook Air M2', 'price': 150000, 'old_price': 165000, 'rating': 4.9, 'description': ['Apple M2 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_macbook_air_m2.jpg', 'category': 'Laptops'},
+                {'name': 'Dell XPS 15', 'price': 180000, 'old_price': 200000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','1TB SSD'], 'image': 'images/dell_xps_15.jpg', 'category': 'Laptops'},
+                {'name': 'HP Spectre x360', 'price': 145000, 'old_price': 160000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','512GB SSD'], 'image': 'images/hp_spectre_x360.jpg', 'category': 'Laptops'},
+                {'name': 'Lenovo ThinkPad X1 Carbon', 'price': 165000, 'old_price': 180000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/lenovo_thinkpad_x1_carbon.jpg', 'category': 'Laptops'},
+                {'name': 'Asus ROG Zephyrus G14', 'price': 190000, 'old_price': 210000, 'rating': 4.8, 'description': ['AMD Ryzen 9','16GB RAM','1TB SSD'], 'image': 'images/asus_rog_zephyrus_g14.jpg', 'category': 'Laptops'},
+                {'name': 'Apple iMac 24"', 'price': 180000, 'old_price': 195000, 'rating': 4.8, 'description': ['Apple M1 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_imac_24.jpg', 'category': 'Desktops'},
+                {'name': 'Alienware Aurora R15', 'price': 250000, 'old_price': 280000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','2TB SSD'], 'image': 'images/alienware_aurora_r15.jpg', 'category': 'Desktops'},
+                {'name': 'HP Envy All-in-One 34"', 'price': 220000, 'old_price': 240000, 'rating': 4.8, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/hp_envy_all-in-one_34.jpg', 'category': 'Desktops'},
+                {'name': 'Corsair Vengeance i7400', 'price': 280000, 'old_price': 310000, 'rating': 4.9, 'description': ['Intel Core i7','32GB DDR5','2TB NVMe'], 'image': 'images/gaming_pc_pro.jpg', 'category': 'Desktops'},
+                {'name': 'HP Pavilion Gaming Desktop', 'price': 98000, 'old_price': 110000, 'rating': 4.6, 'description': ['Intel Core i5','16GB RAM','512GB SSD'], 'image': 'images/hp_pavilion_gaming_desktop.jpg', 'category': 'Desktops'},
+                {'name': 'Sony WH-1000XM5 Headphones', 'price': 45000, 'old_price': 52000, 'rating': 4.9, 'description': ['Noise Cancelling','Wireless','30-Hour Battery'], 'image': 'images/sony_wh-1000xm5_headphones.jpg', 'category': 'Accessories'},
+                {'name': 'Logitech MX Master 3S Mouse', 'price': 12000, 'old_price': 15000, 'rating': 4.9, 'description': ['Ergonomic Design','8K DPI Sensor','Quiet Clicks'], 'image': 'images/logitech_mx_master_3s_mouse.jpg', 'category': 'Accessories'},
+                {'name': 'Keychron K2 Mechanical Keyboard', 'price': 9500, 'old_price': 11000, 'rating': 4.8, 'description': ['Wireless/Wired','Gateron Switches','Mac & Windows'], 'image': 'images/keychron_k2_mechanical_keyboard.jpg', 'category': 'Accessories'},
+                {'name': 'Anker 737 Power Bank', 'price': 15000, 'old_price': 18000, 'rating': 4.9, 'description': ['24,000mAh','140W Output','Smart Display'], 'image': 'images/anker_737_power_bank.jpg', 'category': 'Accessories'},
+                {'name': 'Logitech C920 HD Pro Webcam', 'price': 8000, 'old_price': 9500, 'rating': 4.7, 'description': ['1080p Full HD','Stereo Audio','Light Correction'], 'image': 'images/logitech_c920_hd_pro_webcam.jpg', 'category': 'Accessories'},
             ]
 
             for data in initial_products:
@@ -86,15 +140,14 @@ def init_database():
                 p.description_list = data.get('description', [])
                 db.session.add(p)
 
-            # Create a test order for the admin user with sample shipping details
             test_order = Order(
                 user_id=admin_user.id,
                 reference='TEST_ORDER_123',
                 amount=150000,
                 phone_number='0712345678',
-                county='Nairobi',  # Sample shipping county
-                city='Nairobi',  # Sample shipping city
-                shipping_address='Test Street, Nairobi',  # Sample shipping address
+                county='Nairobi',
+                city='Nairobi',
+                shipping_address='Test Street, Nairobi',
                 status='success'
             )
             db.session.add(test_order)
@@ -116,18 +169,16 @@ class Product(db.Model):
     price = db.Column(db.Float, nullable=False)
     old_price = db.Column(db.Float)
     rating = db.Column(db.Float)
-    description = db.Column(db.String(500)) # Storing as comma-separated string
+    description = db.Column(db.String(500))
     image = db.Column(db.String(500), nullable=False)
     category = db.Column(db.String(80), nullable=False)
 
     @property
     def web_image_path(self):
-        """Ensures the image path uses forward slashes for web URLs."""
         if self.image:
             return self.image.replace('\\', '/')
         return None
 
-    # Helper to convert description from/to list
     @property
     def description_list(self):
         return self.description.split(',') if self.description else []
@@ -137,35 +188,21 @@ class Product(db.Model):
         self.description = ','.join(value_list)
 
 class Order(db.Model):
-    """
-    Represents an order placed by a user in the e-commerce system.
-
-    Attributes:
-        id: Unique identifier for the order.
-        user_id: Foreign key referencing the User who placed the order.
-        reference: Unique payment reference (e.g., from Paystack).
-        amount: Total amount of the order in KSh.
-        phone_number: M-PESA phone number used for payment.
-        county: County for shipping (e.g., Nairobi, Mombasa).
-        city: City/town for shipping (e.g., Nairobi, Kisumu).
-        shipping_address: Full shipping address details.
-        status: Order status ('pending', 'success', 'failed').
-        created_at: Timestamp when the order was created.
-    """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     reference = db.Column(db.String(100), unique=True, nullable=False)
     amount = db.Column(db.Float, nullable=False)
     phone_number = db.Column(db.String(20), nullable=False)
-    county = db.Column(db.String(100), nullable=False)  # Shipping county (e.g., Nairobi)
-    city = db.Column(db.String(100), nullable=False)  # Shipping city/town
-    shipping_address = db.Column(db.String(500), nullable=False)  # Full shipping address (e.g.,434, 5th avenue, Nairobi)
-    status = db.Column(db.String(50), default='pending')  # Order status: pending, success, failed
+    county = db.Column(db.String(100), nullable=False)
+    city = db.Column(db.String(100), nullable=False)
+    shipping_address = db.Column(db.String(500), nullable=False)
+    status = db.Column(db.String(50), default='pending')
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 # --- Email Sending Functions ---
 def send_welcome_email(email, username):
-    """Send a welcome email to a newly registered user."""
+    if not app.config.get('MAIL_SERVER'):
+        return
     msg = Message(
         subject='Welcome to Tech Kenya Accessories!',
         sender=app.config['MAIL_USERNAME'],
@@ -183,12 +220,12 @@ The Tech Kenya Team
 """
     try:
         mail.send(msg)
-        print(f"Welcome email sent to {email}")
     except Exception as e:
         print(f"Failed to send welcome email to {email}: {e}")
 
 def send_login_notification(email, username):
-    """Send a login notification email to the user."""
+    if not app.config.get('MAIL_SERVER'):
+        return
     msg = Message(
         subject='Login Notification - Tech Kenya Accessories',
         sender=app.config['MAIL_USERNAME'],
@@ -206,7 +243,6 @@ The Tech Kenya Team
 """
     try:
         mail.send(msg)
-        print(f"Login notification sent to {email}")
     except Exception as e:
         print(f"Failed to send login notification to {email}: {e}")
 
@@ -217,28 +253,21 @@ def init_db_command():
         db.drop_all()
         db.create_all()
 
-        # Create admin user
         hashed_password = generate_password_hash('admin')
         admin_user = User(username='admin', email='admin@example.com', password_hash=hashed_password, is_admin=True)
         db.session.add(admin_user)
 
-        # This list uses local image paths to guarantee they load.
         initial_products = [
-            # Laptops
             {'name': 'Apple MacBook Air M2', 'price': 150000, 'old_price': 165000, 'rating': 4.9, 'description': ['Apple M2 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_macbook_air_m2.jpg', 'category': 'Laptops'},
             {'name': 'Dell XPS 15', 'price': 180000, 'old_price': 200000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','1TB SSD'], 'image': 'images/dell_xps_15.jpg', 'category': 'Laptops'},
             {'name': 'HP Spectre x360', 'price': 145000, 'old_price': 160000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','512GB SSD'], 'image': 'images/hp_spectre_x360.jpg', 'category': 'Laptops'},
             {'name': 'Lenovo ThinkPad X1 Carbon', 'price': 165000, 'old_price': 180000, 'rating': 4.7, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/lenovo_thinkpad_x1_carbon.jpg', 'category': 'Laptops'},
             {'name': 'Asus ROG Zephyrus G14', 'price': 190000, 'old_price': 210000, 'rating': 4.8, 'description': ['AMD Ryzen 9','16GB RAM','1TB SSD'], 'image': 'images/asus_rog_zephyrus_g14.jpg', 'category': 'Laptops'},
-            
-            # Desktops
             {'name': 'Apple iMac 24"', 'price': 180000, 'old_price': 195000, 'rating': 4.8, 'description': ['Apple M1 Chip','8GB RAM','256GB SSD'], 'image': 'images/apple_imac_24.jpg', 'category': 'Desktops'},
             {'name': 'Alienware Aurora R15', 'price': 250000, 'old_price': 280000, 'rating': 4.9, 'description': ['Intel Core i9','32GB RAM','2TB SSD'], 'image': 'images/alienware_aurora_r15.jpg', 'category': 'Desktops'},
             {'name': 'HP Envy All-in-One 34"', 'price': 220000, 'old_price': 240000, 'rating': 4.8, 'description': ['Intel Core i7','16GB RAM','1TB SSD'], 'image': 'images/hp_envy_all-in-one_34.jpg', 'category': 'Desktops'},
             {'name': 'Corsair Vengeance i7400', 'price': 280000, 'old_price': 310000, 'rating': 4.9, 'description': ['Intel Core i7','32GB DDR5','2TB NVMe'], 'image': 'images/gaming_pc_pro.jpg', 'category': 'Desktops'},
             {'name': 'HP Pavilion Gaming Desktop', 'price': 98000, 'old_price': 110000, 'rating': 4.6, 'description': ['Intel Core i5','16GB RAM','512GB SSD'], 'image': 'images/hp_pavilion_gaming_desktop.jpg', 'category': 'Desktops'},
-
-            # Accessories
             {'name': 'Sony WH-1000XM5 Headphones', 'price': 45000, 'old_price': 52000, 'rating': 4.9, 'description': ['Noise Cancelling','Wireless','30-Hour Battery'], 'image': 'images/sony_wh-1000xm5_headphones.jpg', 'category': 'Accessories'},
             {'name': 'Logitech MX Master 3S Mouse', 'price': 12000, 'old_price': 15000, 'rating': 4.9, 'description': ['Ergonomic Design','8K DPI Sensor','Quiet Clicks'], 'image': 'images/logitech_mx_master_3s_mouse.jpg', 'category': 'Accessories'},
             {'name': 'Keychron K2 Mechanical Keyboard', 'price': 9500, 'old_price': 11000, 'rating': 4.8, 'description': ['Wireless/Wired','Gateron Switches','Mac & Windows'], 'image': 'images/keychron_k2_mechanical_keyboard.jpg', 'category': 'Accessories'},
@@ -250,35 +279,27 @@ def init_db_command():
             p = Product(name=data['name'], price=data['price'], old_price=data.get('old_price'), rating=data.get('rating'), image=data['image'], category=data['category'])
             p.description_list = data.get('description', [])
             db.session.add(p)
-        
+
         db.session.commit()
         print("✅ Initialized the database with fresh data.")
 
-@app.route('/admin/reseed-products')
+@app.route('/admin/reseed-products', methods=['POST'])
+@login_required
+@admin_required
 def reseed_products():
-    """
-    An admin-only route to clear and re-populate the product database.
-    This is useful for development to apply changes from initial_products.
-    """
-    if not session.get('is_admin'):
-        flash('You do not have permission to perform this action.', 'danger')
-        return redirect(url_for('home'))
-
-    # Clear the Product table
+    """Admin-only POST route to clear and re-populate the product database."""
     db.session.query(Product).delete()
     db.session.commit()
-    flash('All products have been deleted. Repopulating database...', 'warning')
-    init_db_command() # This will now run the product population logic
+    flash('All products deleted. Repopulating database...', 'warning')
+    init_db_command.callback()
     flash('Product database has been successfully re-seeded.', 'success')
     return redirect(url_for('admin.index'))
 
 @app.context_processor
 def inject_cart_count():
     cart = session.get('cart', {})
-    # Sum the quantities of all items in the cart
     cart_item_count = sum(cart.values())
 
-    # Get cart items for dropdown display
     cart_items = []
     total = 0
     for pid_str, qty in cart.items():
@@ -304,42 +325,31 @@ def inject_cart_count():
 
 @app.route('/')
 def home():
-    # Get search query and category from request args
     search_query = request.args.get('q')
     selected_category = request.args.get('category')
 
-    # Base query
     query = Product.query
 
-    # Apply search filter if present
     if search_query:
         query = query.filter(Product.name.ilike(f'%{search_query}%'))
-        # When searching, we don't want the category filter from the sidebar to be active
         selected_category = None
-
-    # Apply category filter if present (and not searching)
     elif selected_category:
         query = query.filter_by(category=selected_category)
 
-    # Fetch products from the filtered query
     products = query.order_by(Product.name).all()
-
-    # Get all distinct categories for the sidebar
     all_categories = [cat[0] for cat in db.session.query(Product.category).distinct().order_by(Product.category).all()]
 
-    # Group the final list of products by category for display
     categorized_products = {}
     if products:
         result_categories = sorted(list(set(p.category for p in products)))
         for cat in result_categories:
             categorized_products[cat] = [p for p in products if p.category == cat]
 
-    # For the carousel, just get the first 3 products
     carousel_products = Product.query.limit(3).all()
 
-    return render_template('home.html', 
+    return render_template('home.html',
                            carousel_products=carousel_products,
-                           categories=all_categories, 
+                           categories=all_categories,
                            categorized_products=categorized_products,
                            selected_category=selected_category,
                            search_query=search_query)
@@ -347,9 +357,8 @@ def home():
 @app.route('/product/<int:product_id>')
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
-    # You could also fetch related products here to show on the page
     related_products = Product.query.filter(
-        Product.category == product.category, 
+        Product.category == product.category,
         Product.id != product.id
     ).limit(4).all()
     return render_template('product_detail.html', product=product, related_products=related_products)
@@ -357,32 +366,33 @@ def product_detail(product_id):
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
+        username = (request.form.get('username') or '').strip()
+        email = (request.form.get('email') or '').strip().lower()
+        password = request.form.get('password') or ''
 
         if not username or not email or not password:
             flash('Username, email, and password are required.', 'warning')
             return redirect(url_for('register'))
 
-        if '@' not in email:
+        if not is_valid_email(email):
             flash('Please enter a valid email address.', 'warning')
             return redirect(url_for('register'))
 
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user:
+        if not is_strong_password(password):
+            flash('Password must be at least 8 characters and contain both letters and numbers.', 'warning')
+            return redirect(url_for('register'))
+
+        if User.query.filter_by(username=username).first():
             flash('Username already exists', 'warning')
             return redirect(url_for('register'))
 
-        existing_email = User.query.filter_by(email=email).first()
-        if existing_email:
+        if User.query.filter_by(email=email).first():
             flash('Email already exists', 'warning')
             return redirect(url_for('register'))
 
         new_user = User(username=username, email=email, password_hash=generate_password_hash(password))
         db.session.add(new_user)
         db.session.commit()
-        # Send welcome email
         send_welcome_email(new_user.email, new_user.username)
         flash('Registration successful. Please login.', 'success')
         return redirect(url_for('login'))
@@ -391,15 +401,15 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
         user = User.query.filter_by(username=username).first()
 
         if user and check_password_hash(user.password_hash, password):
+            session.clear()
             session['username'] = username
             session['is_admin'] = user.is_admin
             flash('Login successful', 'success')
-            # Send login notification email
             send_login_notification(user.email, user.username)
             return redirect(url_for('home'))
         else:
@@ -409,8 +419,7 @@ def login():
 
 @app.route('/logout')
 def logout():
-    session.pop('username', None)
-    session.pop('is_admin', None)
+    session.clear()
     flash('You have been logged out.', 'info')
     return redirect(url_for('home'))
 
@@ -422,7 +431,6 @@ def add_to_cart(product_id):
         return redirect(request.referrer or url_for('home'))
 
     cart = session.get('cart', {})
-    # Use string keys for the cart session dictionary for JSON compatibility
     product_id_str = str(product_id)
     cart[product_id_str] = cart.get(product_id_str, 0) + 1
     session['cart'] = cart
@@ -435,7 +443,6 @@ def remove_from_cart(product_id):
     product_id_str = str(product_id)
 
     if product_id_str in cart:
-        # Get product name before deleting for the flash message
         product = Product.query.get(product_id)
         product_name = product.name if product else 'Item'
         cart.pop(product_id_str, None)
@@ -457,14 +464,14 @@ def update_cart(product_id):
         flash('Invalid quantity.', 'danger')
         return redirect(url_for('cart'))
 
+    if quantity <= 0:
+        flash('Quantity must be at least 1.', 'warning')
+        return redirect(url_for('cart'))
+
     if product_id_str in cart:
-        if quantity > 0:
-            cart[product_id_str] = quantity
-            flash('Cart updated.', 'success')
-        else: # If quantity is 0 or less, remove the item
-            cart.pop(product_id_str, None)
-            flash('Item removed from cart.', 'info')
+        cart[product_id_str] = quantity
         session['cart'] = cart
+        flash('Cart updated.', 'success')
 
     return redirect(url_for('cart'))
 
@@ -474,7 +481,6 @@ def cart():
     cart_items = []
     total = 0
     for pid_str, qty in cart.items():
-        # Convert the string key from the session back to an integer for product lookup
         pid = int(pid_str)
         product = Product.query.get(pid)
         if product:
@@ -484,74 +490,63 @@ def cart():
     return render_template('cart.html', cart_items=cart_items, total=total)
 
 @app.route('/checkout', methods=['GET', 'POST'])
+@login_required
 def checkout():
-    """
-    Handle the checkout process for users to complete their orders.
-
-    GET: Display the checkout form with shipping details fields.
-    POST: Process the checkout form, validate shipping details, initiate M-PESA payment,
-          and create an order record with shipping information.
-
-    Shipping Details Collected:
-    - county: User's county (e.g., Nairobi, Mombasa) for regional shipping
-    - city: User's city/town within the county
-    - shipping_address: Full street address for delivery
-
-    The shipping details are stored in the Order model and displayed in the orders page.
-    """
-    if 'username' not in session:
-        flash('Please login to checkout.', 'warning')
-        return redirect(url_for('login'))
-
     if not session.get('cart'):
         flash('Your cart is empty. Add items before checking out.', 'warning')
         return redirect(url_for('home'))
 
-    admin_phone = '0111214624' # Admin's predefined M-PESA number
+    admin_phone = '0111214624'
 
     if request.method == 'POST':
-        phone_number = request.form.get('phone_number')
-        county = request.form.get('county')  # Shipping county
-        city = request.form.get('city')  # Shipping city/town
-        shipping_address = request.form.get('shipping_address')  # Full shipping address
+        phone_number = (request.form.get('phone_number') or '').strip()
+        county = (request.form.get('county') or '').strip()
+        city = (request.form.get('city') or '').strip()
+        shipping_address = (request.form.get('shipping_address') or '').strip()
 
-        # 1. Calculate total amount from the cart
+        # Override phone for admin user
+        if session.get('is_admin'):
+            phone_number = admin_phone
+
+        if not is_valid_phone(phone_number):
+            flash('Please provide a valid M-PESA phone number.', 'warning')
+            return render_template('checkout.html', admin_phone=admin_phone)
+
+        if not county or not city or not shipping_address:
+            flash('Please provide complete shipping details.', 'warning')
+            return render_template('checkout.html', admin_phone=admin_phone)
+
+        # Recalculate total from DB to prevent client tampering
         cart = session.get('cart', {})
         total = 0
         for pid_str, qty in cart.items():
             product = Product.query.get(int(pid_str))
-            if product:
+            if product and qty > 0:
                 total += product.price * qty
 
-        # Override phone number if the user is an admin
-        if session.get('is_admin'):
-            phone_number = admin_phone
-            flash('Admin checkout: Using predefined M-PESA number.', 'info')
-
-        if total == 0:
+        if total <= 0:
             flash('Cannot checkout with an empty cart.', 'warning')
             return redirect(url_for('cart'))
 
-        # Validate that all shipping details are provided
-        if not county or not city or not shipping_address:
-            flash('Please provide shipping details.', 'warning')
-            return render_template('checkout.html', admin_phone=admin_phone)
+        user = User.query.filter_by(username=session['username']).first()
+        if not user:
+            flash('User not found. Please log in again.', 'danger')
+            return redirect(url_for('logout'))
 
-        # 2. Initiate the M-Pesa charge via Paystack (fire and forget)
-        email = "customer@anorld.com"  # Default email, can be updated to get from user
+        # Initiate payment
+        email = user.email or "customer@example.com"
         result = initiate_mpesa_charge(phone_number=phone_number, amount=total, email=email)
-        if "error" in result:
-            # Still create order as pending for tracking, even if payment fails
-            reference = f"ANORLD_{int(total)}_{phone_number.replace('+', '').replace(' ', '')}"
-            user = User.query.filter_by(username=session['username']).first()
+
+        if isinstance(result, dict) and "error" in result:
+            reference = f"ANORLD_{int(total)}_{re.sub(r'[^0-9]', '', phone_number)}"
             order = Order(
                 user_id=user.id,
                 reference=reference,
                 amount=total,
                 phone_number=phone_number,
-                county=county,  # Store shipping county
-                city=city,  # Store shipping city
-                shipping_address=shipping_address,  # Store full shipping address
+                county=county,
+                city=city,
+                shipping_address=shipping_address,
                 status='failed'
             )
             db.session.add(order)
@@ -559,23 +554,24 @@ def checkout():
             flash(f'Payment initiation failed: {result["error"]}. Order {reference} created for tracking.', 'danger')
             return render_template('checkout.html', admin_phone=admin_phone)
 
-        # Success: Create pending order with Paystack reference and shipping details
-        reference = result['data']['reference']
-        user = User.query.filter_by(username=session['username']).first()
+        reference = result.get('data', {}).get('reference') if isinstance(result, dict) else None
+        if not reference:
+            flash('Payment provider did not return a reference. Please try again.', 'danger')
+            return render_template('checkout.html', admin_phone=admin_phone)
+
         order = Order(
             user_id=user.id,
             reference=reference,
             amount=total,
             phone_number=phone_number,
-            county=county,  # Store shipping county
-            city=city,  # Store shipping city
-            shipping_address=shipping_address,  # Store full shipping address
+            county=county,
+            city=city,
+            shipping_address=shipping_address,
             status='pending'
         )
         db.session.add(order)
         db.session.commit()
 
-        # 3. Flash success and clear cart
         flash(f'A payment request has been sent to {phone_number}. Please enter your M-PESA PIN to complete the transaction. Order: {reference}', 'success')
         session.pop('cart', None)
 
@@ -584,93 +580,92 @@ def checkout():
 
 @app.route('/mpesa_callback', methods=['POST'])
 def mpesa_callback():
-    # M-PESA will send a POST request to this URL after a transaction.
-    # You need to process the JSON data to confirm payment status.
-    data = request.get_json()
-    # Logic to update order status in the database based on the callback data.
+    # Safaricom will POST transaction status here. Signature verification
+    # should be added once production credentials are available.
+    data = request.get_json(silent=True) or {}
+    print(f"M-PESA callback received: {data}")
     return 'OK', 200
 
 @app.route('/paystack_webhook', methods=['POST'])
+@csrf.exempt
 def paystack_webhook():
-    # Paystack sends webhooks for payment events
-    data = request.get_json()
+    """Verify Paystack webhook signature before processing events."""
+    paystack_secret_key = os.environ.get('PAYSTACK_SECRET_KEY')
+    if not paystack_secret_key:
+        return 'Server misconfiguration', 500
+
+    signature = request.headers.get('x-paystack-signature', '')
+    body = request.get_data() or b''
+    expected = hmac.new(
+        paystack_secret_key.encode('utf-8'),
+        body,
+        hashlib.sha512
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected, signature):
+        return 'Invalid signature', 400
+
+    data = request.get_json(silent=True) or {}
     event = data.get('event')
-    if event == 'charge.success':
-        # Payment was successful
-        reference = data.get('data', {}).get('reference')
-        if reference:
-            order = Order.query.filter_by(reference=reference).first()
-            if order:
-                order.status = 'success'
-                db.session.commit()
-                print(f"Order {reference} marked as success.")
-            else:
-                print(f"Order with reference {reference} not found.")
-        print(f"Payment successful: {data}")
-        # Here you can send email, etc.
-    elif event == 'charge.failed':
-        reference = data.get('data', {}).get('reference')
-        if reference:
-            order = Order.query.filter_by(reference=reference).first()
-            if order:
-                order.status = 'failed'
-                db.session.commit()
-                print(f"Order {reference} marked as failed.")
-            else:
-                print(f"Order with reference {reference} not found.")
-        print(f"Payment failed: {data}")
+    reference = (data.get('data') or {}).get('reference')
+
+    if event in ('charge.success', 'charge.failed') and reference:
+        order = Order.query.filter_by(reference=reference).first()
+        if order:
+            order.status = 'success' if event == 'charge.success' else 'failed'
+            db.session.commit()
+            print(f"Order {reference} marked as {order.status}.")
+        else:
+            print(f"Order with reference {reference} not found.")
+
     return 'OK', 200
 
 @app.route('/orders')
+@login_required
 def orders():
-    if 'username' not in session:
-        flash('Please login to view your orders.', 'warning')
-        return redirect(url_for('login'))
-
     user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('logout'))
     user_orders = Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).all()
     return render_template('orders.html', orders=user_orders)
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
     if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        category = request.form.get('category')
-        message = request.form.get('message')
+        name = (request.form.get('name') or '').strip()
+        email = (request.form.get('email') or '').strip().lower()
+        category = (request.form.get('category') or '').strip()
+        message = (request.form.get('message') or '').strip()
 
         if not name or not email or not category or not message:
             flash('All fields are required.', 'warning')
             return redirect(url_for('contact'))
 
-        # Here you can add logic to send an email or save to database
-        # For now, just flash a success message
+        if not is_valid_email(email):
+            flash('Please enter a valid email address.', 'warning')
+            return redirect(url_for('contact'))
+
         flash(f'Thank you {name}, your {category} message has been sent. We will get back to you at {email}.', 'success')
         return redirect(url_for('home'))
     return render_template('contact.html')
 
 # --- Admin Configuration ---
 class SecureModelView(ModelView):
-    """Create a secure model view that requires admin privileges."""
+    """Model view that requires admin privileges."""
     def is_accessible(self):
         return session.get('is_admin') is True
 
     def inaccessible_callback(self, name, **kwargs):
-        # Redirect non-admin users to the login page
         return redirect(url_for('login', next=request.url))
 
-# --- Custom Admin View for Products with Image Upload ---
-# Define the path for image uploads relative to the app's root directory
 upload_path = os.path.join(os.path.dirname(__file__), 'static/images')
-# Create the directory if it doesn't exist
 try:
     os.makedirs(upload_path)
 except OSError:
     pass
 
 class ProductAdminView(SecureModelView):
-    # Use form_overrides for the class and form_args for constructor arguments
-    # This is the standard and most stable way to configure custom fields.
     form_overrides = {
         'image': ImageUploadField
     }
@@ -678,26 +673,22 @@ class ProductAdminView(SecureModelView):
         'image': {
             'label': 'Image',
             'base_path': upload_path,
-            'url_relative_path': 'images/' # Ensures correct URL generation
+            'url_relative_path': 'images/'
         }
     }
 
-# Note: Removed 'template_mode' to maintain compatibility with older Flask-Admin versions
 admin = Admin(app, name='Tech Kenya Admin')
 admin.add_view(SecureModelView(User, db.session))
-# Replace the default Product view with our new custom one
 admin.add_view(ProductAdminView(Product, db.session))
 
-# Initialize database on startup
 init_database()
 
 if __name__ == '__main__':
-    # Open the web browser automatically
     def open_browser():
         webbrowser.open_new('http://127.0.0.1:5000/')
 
-    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
-        # Open browser only on the first run, not on reloads
+    # Only auto-open browser in development
+    if not IS_PRODUCTION and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
         Timer(1, open_browser).start()
     port = int(os.environ.get('PORT', 10000))
     app.run(debug=False, host='0.0.0.0', port=port)
