@@ -1,16 +1,43 @@
-# Environment variables
+# Secrets / environment
 .env
+.env.local
+.env.*.local
 
-# Python virtual environment
-venv/
-
-# Python cache
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+venv/
+.venv/
+env/
 
-# Flask session files
+# Flask
 flask_session/
-
-# SQLite database
-database.db
 instance/
+
+# Databases
+database.db
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build / logs
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Backups / temp
+*.bak
+*.swp
+*.tmp
+~$*
